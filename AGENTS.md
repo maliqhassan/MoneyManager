@@ -39,3 +39,15 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## Project rules (Budget Tracker)
+
+Read `docs/architecture.md` before changing structure. Non-negotiables:
+
+- **Money**: integer minor units only (`src/domain/money`). Never use floats for amounts or rates; rates are exact decimal strings. All financial calculations live in `src/domain` with tests.
+- **Data access**: routes/components never import `expo-sqlite` or `@supabase/supabase-js` (lint-enforced). Use repositories (`src/repositories`) via hooks.
+- **Writes**: repository writes validate with Zod and write the row + `sync_outbox` entry in one SQLite transaction.
+- **Schema changes** need both a Supabase migration (`supabase/migrations`) and a local migration (`src/database/migrations`, append-only).
+- **Security**: RLS on every user table; composite `(id, user_id)` foreign keys; no secrets in `EXPO_PUBLIC_*`; log via `services/monitoring/logger` (redacts) — never log tokens or financial data.
+- **UI**: theme tokens only (no hardcoded colors); every screen handles loading/empty/error; accessibility labels and 48pt targets; user-facing strings in `src/i18n/locales/en.ts`.
+- **Done means**: `npm run verify` passes (typecheck + lint + tests).
