@@ -121,3 +121,19 @@ export function createBaseCurrencySnapshot(
     baseFxSource: rate.source,
   };
 }
+
+/**
+ * Exact inverse of a rate (1 / rate), rounded to `scale` decimals. Used when
+ * only the opposite quote is stored (EUR→USD known, USD→EUR needed).
+ */
+export function invertRate(rate: DecimalString, scale = 12): DecimalString {
+  if (!isDecimalString(rate)) throw new InvalidExchangeRateError(`Invalid rate "${rate}"`);
+  const { coefficient, scale: rateScale } = parseDecimal(rate);
+  if (coefficient <= 0n) throw new InvalidExchangeRateError('Exchange rate must be positive');
+  // 1 / (c / 10^s) = 10^s / c ; scaled by 10^scale
+  const inverted = divideAndRound(pow10(rateScale + scale), coefficient);
+  const digits = inverted.toString().padStart(scale + 1, '0');
+  const whole = digits.slice(0, -scale);
+  const fraction = digits.slice(-scale).replace(/0+$/, '');
+  return fraction ? `${whole}.${fraction}` : whole;
+}

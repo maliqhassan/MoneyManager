@@ -18,6 +18,8 @@ import type {
   CategoryInput,
   CategoryUpdate,
 } from '@/validation/entities';
+import type { PreferencesUpdate } from '@/validation/preferences';
+import type { DecimalString } from '@/domain/money/decimal';
 
 /**
  * Repository contracts. Features depend on these interfaces only; the SQLite
@@ -42,18 +44,39 @@ export interface AccountRepository {
   remove(id: Uuid): Promise<void>;
   /** Current balance of every non-deleted account, in each account's currency. */
   getBalances(): Promise<AccountBalance[]>;
+  /** How much history references the account (drives what may be edited/deleted). */
+  getUsage(id: Uuid): Promise<AccountUsage>;
+  /**
+   * Changes the currency of an account WITHOUT history. Refused once any
+   * transaction or transfer references it — historical amounts are never
+   * silently converted. The opening balance must be re-entered in the new
+   * currency's minor units.
+   */
+  changeCurrency(id: Uuid, currency: CurrencyCode, openingBalanceMinor: number): Promise<Account>;
+}
+
+export interface AccountUsage {
+  transactionCount: number;
+  transferCount: number;
 }
 
 export interface PreferencesRepository {
   get(): Promise<UserPreferences | null>;
-  update(
-    patch: Partial<
-      Pick<
-        UserPreferences,
-        'baseCurrency' | 'locale' | 'timeZone' | 'firstDayOfWeek' | 'monthStartDay'
-      >
-    >,
-  ): Promise<UserPreferences>;
+  /** Works offline (queued for sync). Throws not_found until the server-created row has synced. */
+  update(patch: PreferencesUpdate): Promise<UserPreferences>;
+}
+
+export interface ExchangeRateRepository {
+  /**
+   * Latest known rate converting 1 unit of `from` into `to` on or before
+   * `onOrBefore` (YYYY-MM-DD). Uses the inverse quote when only that is
+   * stored. Null when unknown — callers must never guess.
+   */
+  findRate(
+    from: CurrencyCode,
+    to: CurrencyCode,
+    onOrBefore: IsoDate,
+  ): Promise<DecimalString | null>;
 }
 
 export interface CategoryRepository {
@@ -96,6 +119,7 @@ export interface BudgetRepository {
 export interface Repositories {
   accounts: AccountRepository;
   preferences: PreferencesRepository;
+  exchangeRates: ExchangeRateRepository;
 }
 
 export type LocalChangeListener = (table: string) => void;

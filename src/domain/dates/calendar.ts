@@ -126,3 +126,8 @@ export function toCalendarDateInZone(instant: Date, timeZone: string): CalendarD
     Number(parts.find((p) => p.type === type)?.value);
   return formatCalendarDate({ year: get('year'), month: get('month'), day: get('day') });
 }
+
+/** Today's calendar date for the user, in their configured time zone. */
+export function todayInZone(timeZone: string, now: Date = new Date()): CalendarDate {
+  return toCalendarDateInZone(now, timeZone);
+}

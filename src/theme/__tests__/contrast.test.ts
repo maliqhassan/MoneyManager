@@ -1,4 +1,5 @@
 import { type ColorScheme, darkColors, lightColors } from '../colors';
+import { ACCOUNT_COLORS } from '../tokens';
 
 function luminance(hex: string): number {
   const channels = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
@@ -36,5 +37,12 @@ describe.each([
 ])('%s theme contrast', (_name, colors) => {
   it.each(textPairs)('%s on %s meets WCAG AA', (fg, bg) => {
     expect(contrast(colors[fg], colors[bg])).toBeGreaterThanOrEqual(AA_TEXT);
+  });
+});
+
+describe('account accent colors', () => {
+  it.each([...ACCOUNT_COLORS])('white glyph on %s meets 4.5:1', (color) => {
+    expect(contrast(lightColors.onAccent, color)).toBeGreaterThanOrEqual(AA_TEXT);
+    expect(darkColors.onAccent).toBe(lightColors.onAccent);
   });
 });

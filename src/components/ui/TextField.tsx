@@ -15,6 +15,12 @@ export interface TextFieldProps extends Omit<TextInputProps, 'style'> {
   secureToggle?: boolean;
   revealLabel?: string;
   hideLabel?: string;
+  /** Short text before the input, e.g. a currency symbol. */
+  prefix?: string;
+  /** Extra control after the input, e.g. a sign toggle. */
+  trailing?: React.ReactNode;
+  /** Extra line under the field (e.g. a live preview), shown when there is no error. */
+  footer?: React.ReactNode;
 }
 
 /**
@@ -33,6 +39,9 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
     editable = true,
     onFocus,
     onBlur,
+    prefix,
+    trailing,
+    footer,
     ...rest
   },
   ref,
@@ -62,6 +71,11 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
           },
         ]}
       >
+        {prefix ? (
+          <Text variant="body" tone="textSecondary" importantForAccessibility="no">
+            {prefix}
+          </Text>
+        ) : null}
         <TextInput
           ref={ref}
           accessibilityLabel={label}
@@ -91,16 +105,22 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
             onPress={() => setRevealed((v) => !v)}
           />
         ) : null}
+        {trailing}
       </View>
       {hasError ? (
         <Text variant="bodySmall" tone="negative" accessibilityLiveRegion="polite">
           {error}
         </Text>
-      ) : hint ? (
-        <Text variant="bodySmall" tone="textMuted">
-          {hint}
-        </Text>
-      ) : null}
+      ) : (
+        <>
+          {footer}
+          {hint ? (
+            <Text variant="bodySmall" tone="textMuted">
+              {hint}
+            </Text>
+          ) : null}
+        </>
+      )}
     </View>
   );
 });
@@ -112,6 +132,7 @@ const useStyles = makeStyles((t) => ({
     alignItems: 'center',
     borderRadius: t.radius.md,
     minHeight: 52,
+    gap: t.spacing.xs,
     paddingStart: t.spacing.md,
     paddingEnd: t.spacing.xs,
   },

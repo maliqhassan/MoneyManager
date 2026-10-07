@@ -1,8 +1,10 @@
+import { z } from 'zod';
+
 import type { CurrencyCode } from '@/domain/currency/currencies';
 import type { AccountType } from '@/domain/enums';
 import type { Account } from '@/domain/models';
 import { add, money } from '@/domain/money/money';
-import type { SqlDatabase, SqlValue } from '@/database/types';
+import type { SqlDatabase, SqlExecutor, SqlValue } from '@/database/types';
 import { AppError } from '@/lib/errors';
 import {
   type AccountInput,
@@ -10,8 +12,9 @@ import {
   type AccountUpdate,
   accountUpdateSchema,
 } from '@/validation/entities';
+import { amountMinorSchema, currencyCodeSchema } from '@/validation/common';
 
-import type { AccountBalance, AccountRepository } from '../types';
+import type { AccountBalance, AccountRepository, AccountUsage } from '../types';
 import {
   fromBool,
   insertSynced,
@@ -20,6 +23,23 @@ import {
   updateSynced,
   validate,
 } from './shared';
+
+const changeCurrencySchema = z.object({
+  currency: currencyCodeSchema,
+  openingBalanceMinor: amountMinorSchema,
+});
+
+/** Non-deleted transactions and transfers that reference the account. */
+async function readUsage(db: SqlExecutor, id: string): Promise<AccountUsage> {
+  const row = await db.getFirst<{ transactions: number; transfers: number }>(
+    `SELECT
+       (SELECT COUNT(*) FROM transactions WHERE account_id = ? AND deleted_at IS NULL) AS transactions,
+       (SELECT COUNT(*) FROM transfers
+          WHERE (from_account_id = ? OR to_account_id = ?) AND deleted_at IS NULL) AS transfers`,
+    [id, id, id],
+  );
+  return { transactionCount: row?.transactions ?? 0, transferCount: row?.transfers ?? 0 };
+}
 
 interface AccountRow {
   id: string;
@@ -152,11 +172,8 @@ export class SqliteAccountRepository implements AccountRepository {
 
   async remove(id: string): Promise<void> {
     await this.db.transaction(async (tx) => {
-      const usage = await tx.getFirst<{ n: number }>(
-        `SELECT COUNT(*) AS n FROM transactions WHERE account_id = ? AND deleted_at IS NULL`,
-        [id],
-      );
-      if ((usage?.n ?? 0) > 0) {
+      const usage = await readUsage(tx, id);
+      if (usage.transactionCount + usage.transferCount > 0) {
         throw new AppError('validation', 'Account has transactions', {
           fieldErrors: { _root: 'accounts.errors.hasTransactions' },
         });
@@ -186,6 +203,32 @@ export class SqliteAccountRepository implements AccountRepository {
       accountId: r.id,
       balance: add(money(r.opening_balance_minor, r.currency), money(r.postings_minor, r.currency)),
     }));
+  }
+
+  async getUsage(id: string): Promise<AccountUsage> {
+    return readUsage(this.db, id);
+  }
+
+  async changeCurrency(
+    id: string,
+    currency: CurrencyCode,
+    openingBalanceMinor: number,
+  ): Promise<Account> {
+    const valid = validate(changeCurrencySchema, { currency, openingBalanceMinor });
+    await this.db.transaction(async (tx) => {
+      const usage = await readUsage(tx, id);
+      if (usage.transactionCount + usage.transferCount > 0) {
+        throw new AppError('validation', 'Account currency is locked by history', {
+          fieldErrors: { currency: 'accounts.errors.currencyLocked' },
+        });
+      }
+      await updateSynced(tx, this.ctx, 'accounts', id, {
+        currency: valid.currency,
+        opening_balance_minor: valid.openingBalanceMinor,
+      });
+    });
+    this.ctx.onChange('accounts');
+    return this.require(id);
   }
 
   private async require(id: string): Promise<Account> {

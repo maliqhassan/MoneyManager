@@ -3,6 +3,7 @@ import { initReactI18next } from 'react-i18next';
 import { I18nManager } from 'react-native';
 
 import { en } from './locales/en';
+import { FALLBACK_LANGUAGE, isSupportedLanguage, type SupportedLanguage } from './languages';
 import { getDeviceLocale } from './locale';
 
 /**
@@ -16,18 +17,18 @@ import { getDeviceLocale } from './locale';
  * never left/right, so mirroring works automatically. When an RTL language is
  * added, call I18nManager.forceRTL(isRTL) and reload the app on change.
  */
-export const RESOURCES = {
+export const RESOURCES: Record<SupportedLanguage, { translation: typeof en }> = {
   en: { translation: en },
-} as const;
-
-export type SupportedLanguage = keyof typeof RESOURCES;
-export const SUPPORTED_LANGUAGES = Object.keys(RESOURCES) as SupportedLanguage[];
-export const FALLBACK_LANGUAGE: SupportedLanguage = 'en';
+};
 
 function resolveLanguage(code: string): SupportedLanguage {
-  return (SUPPORTED_LANGUAGES as string[]).includes(code)
-    ? (code as SupportedLanguage)
-    : FALLBACK_LANGUAGE;
+  return isSupportedLanguage(code) ? code : FALLBACK_LANGUAGE;
+}
+
+/** Switches the UI language (no-op for unsupported codes). */
+export function applyLanguage(code: string): void {
+  const next = resolveLanguage(code);
+  if (initialized && i18n.language !== next) void i18n.changeLanguage(next);
 }
 
 const i18n = createInstance();

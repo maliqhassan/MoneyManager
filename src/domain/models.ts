@@ -4,10 +4,12 @@ import type {
   BillPaymentStatus,
   BudgetPeriodType,
   CategoryKind,
+  DateFormat,
   GoalStatus,
   ImportBatchStatus,
   ImportRowStatus,
   NotificationType,
+  NumberFormat,
   RecurrenceFrequency,
   RuleMatchField,
   RuleMatchType,
@@ -62,6 +64,14 @@ export interface UserPreferences extends SyncedEntity {
   firstDayOfWeek: Weekday;
   /** Day of month (1–28) on which monthly budgets start, e.g. payday. */
   monthStartDay: number;
+  /** ISO 3166-1 alpha-2 region the user confirmed (null until chosen). */
+  region: string | null;
+  /** UI language (BCP-47 primary tag), e.g. "en". */
+  language: string;
+  dateFormat: DateFormat;
+  numberFormat: NumberFormat;
+  /** Set when onboarding finished; null means onboarding is still required. */
+  onboardingCompletedAt: IsoTimestamp | null;
 }
 
 export interface Account extends SyncedEntity {

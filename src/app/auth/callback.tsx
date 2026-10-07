@@ -8,7 +8,7 @@ import { logger } from '@/services/monitoring/logger';
 import { selectIsAuthenticated, useAuthStore } from '@/stores/authStore';
 
 /**
- * Landing route for auth deep links (budgettracker://auth/callback?code=…).
+ * Landing route for auth deep links (moneymanager://auth/callback?code=…).
  * Exchanges the PKCE code, then hands control back to the guarded navigator.
  */
 export default function AuthCallbackScreen() {

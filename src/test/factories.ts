@@ -34,3 +34,19 @@ export function createTestContext(
     ...overrides,
   };
 }
+
+/**
+ * Inserts the user_preferences row as the server would create it at sign-up
+ * and as sync would deliver it (version 1, synced).
+ */
+export async function insertSyncedPreferences(
+  db: { run: (sql: string, params?: readonly (string | number | null)[]) => Promise<unknown> },
+  userId: string = TEST_USER_ID,
+): Promise<void> {
+  await db.run(
+    `INSERT INTO user_preferences (id, user_id, created_at, updated_at, version, sync_status,
+       base_currency, locale, time_zone, first_day_of_week, month_start_day)
+     VALUES (?, ?, ?, ?, 1, 'synced', 'USD', 'en-US', 'UTC', 1, 1)`,
+    [userId, userId, '2026-10-07T00:00:00.000Z', '2026-10-07T00:00:00.000Z'],
+  );
+}

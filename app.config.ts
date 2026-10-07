@@ -8,17 +8,17 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 type AppVariant = 'development' | 'preview' | 'production';
 
 const VARIANTS: Record<AppVariant, { name: string; idSuffix: string; scheme: string }> = {
-  development: { name: 'Budget Tracker (Dev)', idSuffix: '.dev', scheme: 'budgettracker-dev' },
+  development: { name: 'MoneyManager (Dev)', idSuffix: '.dev', scheme: 'moneymanager-dev' },
   preview: {
-    name: 'Budget Tracker (Preview)',
+    name: 'MoneyManager (Preview)',
     idSuffix: '.preview',
-    scheme: 'budgettracker-preview',
+    scheme: 'moneymanager-preview',
   },
-  production: { name: 'Budget Tracker', idSuffix: '', scheme: 'budgettracker' },
+  production: { name: 'MoneyManager', idSuffix: '', scheme: 'moneymanager' },
 };
 
 // TODO(release): replace with the final reverse-DNS identifier before the first store build.
-const BASE_BUNDLE_ID = 'com.budgettracker.app';
+const BASE_BUNDLE_ID = 'com.maliqhassan.moneymanager';
 
 function resolveVariant(value: string | undefined): AppVariant {
   return value === 'preview' || value === 'production' ? value : 'development';
@@ -32,7 +32,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   return {
     ...config,
     name,
-    slug: 'budgettracker',
+    slug: 'moneymanager',
     version: '0.1.0',
     scheme,
     orientation: 'portrait',

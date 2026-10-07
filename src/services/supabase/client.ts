@@ -36,7 +36,7 @@ export function getSupabase(): SupabaseClient {
       flowType: 'pkce',
     },
     global: {
-      headers: { 'x-client-info': 'budgettracker-mobile' },
+      headers: { 'x-client-info': 'moneymanager-mobile' },
     },
   });
 

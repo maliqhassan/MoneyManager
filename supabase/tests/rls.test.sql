@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(12);
+select plan(15);
 
 -- Two users; the sign-up trigger seeds profiles, preferences and categories.
 insert into auth.users (id, email, raw_user_meta_data, aud, role)
@@ -53,6 +53,17 @@ select throws_ok($$
   values ('EUR', 'USD', '1.08', '2026-10-01', 'test')
 $$, '42501', null, 'clients cannot write exchange rates');
 
+select lives_ok($$
+  update public.user_preferences
+  set region = 'AE', locale = 'en-AE', date_format = 'DMY', onboarding_completed_at = now()
+  where id = '11111111-1111-4111-8111-111111111111'
+$$, 'user can complete onboarding on own preferences');
+
+select throws_ok($$
+  update public.user_preferences set date_format = 'DD.MM'
+  where id = '11111111-1111-4111-8111-111111111111'
+$$, '23514', null, 'invalid date format is rejected');
+
 -- ---- as user B ----
 select set_config('request.jwt.claim.sub', '22222222-2222-4222-8222-222222222222', true);
 
@@ -67,6 +78,11 @@ select throws_ok($$
     'aaaaaaaa-0000-4000-8000-000000000001', 'expense', -1, 'USD', -1, 'USD', 'USD', -1,
     '2026-10-02', 'identity', now(), '2026-10-02', 'UTC')
 $$, '23503', null, 'user cannot reference another user''s account');
+
+select is_empty($$
+  update public.user_preferences set region = 'US'
+  where id = '11111111-1111-4111-8111-111111111111' returning id
+$$, 'user cannot change another user''s preferences');
 
 -- ---- anonymous ----
 reset role;

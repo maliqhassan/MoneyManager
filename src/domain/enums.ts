@@ -79,3 +79,29 @@ export const NOTIFICATION_TYPES = [
   'system',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+
+/**
+ * Date display order. 'locale' follows the user's formatting locale; the
+ * others force a numeric pattern. Dates are always STORED canonically
+ * (YYYY-MM-DD / ISO-8601) — this only affects presentation.
+ */
+export const DATE_FORMATS = ['locale', 'MDY', 'DMY', 'YMD'] as const;
+export type DateFormat = (typeof DATE_FORMATS)[number];
+
+/**
+ * Number separators. 'locale' follows the user's formatting locale; the
+ * others map to a representative locale (see i18n/format.ts) so grouping and
+ * separators still come from Intl:
+ *   comma_period      1,234.56   (en-US)
+ *   period_comma      1.234,56   (de-DE)
+ *   space_comma       1 234,56   (fr-FR)
+ *   apostrophe_period 1'234.56   (de-CH)
+ */
+export const NUMBER_FORMATS = [
+  'locale',
+  'comma_period',
+  'period_comma',
+  'space_comma',
+  'apostrophe_period',
+] as const;
+export type NumberFormat = (typeof NUMBER_FORMATS)[number];

@@ -92,3 +92,12 @@ export const passwordSchema = z
   .string()
   .min(8, { message: 'validation.passwordTooShort' })
   .max(72, { message: 'validation.passwordTooLong' });
+
+/**
+ * Same rule as currencyCodeSchema but typed CurrencyCode on input too —
+ * for form state, where the value always comes from a picker.
+ */
+export const currencyFieldSchema = z.custom<CurrencyCode>(
+  (v) => typeof v === 'string' && isCurrencyCode(v),
+  { message: 'validation.invalidCurrency' },
+);

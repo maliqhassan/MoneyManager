@@ -35,6 +35,8 @@ export interface ColorScheme {
   warning: string;
   warningMuted: string;
 
+  /** Glyphs on account accent colors (always white; see ACCOUNT_COLORS). */
+  onAccent: string;
   focusRing: string;
   overlay: string;
   skeleton: string;
@@ -67,6 +69,7 @@ export const lightColors: ColorScheme = {
   warning: palette.amber700,
   warningMuted: palette.amber50,
 
+  onAccent: palette.white,
   focusRing: palette.blue500,
   overlay: 'rgba(11, 15, 20, 0.45)',
   skeleton: palette.gray100,
@@ -99,6 +102,7 @@ export const darkColors: ColorScheme = {
   warning: palette.amber400,
   warningMuted: palette.amber900,
 
+  onAccent: palette.white,
   focusRing: palette.blue300,
   overlay: 'rgba(0, 0, 0, 0.6)',
   skeleton: palette.gray800,

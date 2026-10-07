@@ -1,10 +1,10 @@
-# Budget Tracker
+# MoneyManager
 
 A global, offline-first personal finance app — **Track → Budget → Understand → Improve**.
 
 React Native (Expo SDK 57) · TypeScript (strict) · Expo Router · SQLite · Supabase · Zustand · TanStack Query · React Hook Form + Zod
 
-> **Status: foundation.** Architecture, data model, auth, local database, sync engine,
+> **Status: Phase 1 complete.** Foundation plus onboarding, regional preferences and accounts. Architecture, data model, auth, local database, sync engine,
 > design system and navigation shell are in place and tested. Feature screens
 > (accounts, transactions, budgets, …) are built on top in the phases listed in
 > [docs/roadmap.md](docs/roadmap.md).

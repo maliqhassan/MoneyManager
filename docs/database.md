@@ -49,7 +49,7 @@ account by guessing its id.
 | Table | Purpose / notes |
 | --- | --- |
 | `profiles` | Display name, avatar. Created at sign-up. |
-| `user_preferences` | Base currency, locale, time zone, first day of week, month start day. `id = user_id`; created at sign-up (server) so devices never race to create it. |
+| `user_preferences` | Base currency, region, language, locale (formatting), date format, number format, time zone, first day of week, month start day, `onboarding_completed_at`. `id = user_id`; created at sign-up (server) so devices never race to create it. Region is only ever user-confirmed (never IP-derived). |
 | `accounts` | cash, checking, savings, credit_card, debit_card, digital_wallet, loan, other. One currency each (immutable). Opening balance + date. Archive flag. |
 | `categories` | Expense/income, one level of subcategories (`parent_id`), icon, color, `system_key` for seeded defaults (translated in-app). |
 | `merchants` | Normalised payee names, default category. |
@@ -132,3 +132,32 @@ folder, deletes the auth user. All tables cascade from `auth.users`.
   ownership, version bumps, stale-update conflict detection, no hard deletes,
   sign/rate checks, composite FKs, storage folder policies, anon denial and
   deletion cascade.
+
+## Migrations
+
+| # | Supabase | Local | Change |
+| --- | --- | --- | --- |
+| 1 | `20261007120000_initial_schema.sql` | `001_initial.ts` | Core schema, RLS, triggers, storage |
+| 2 | `20261008090000_regional_preferences.sql` | `002_regional_preferences.ts` | `region`, `language`, `date_format`, `number_format`, `onboarding_completed_at`; locale/time-zone format checks |
+
+Deploy order: **apply the Supabase migration before shipping an app build that
+uses it** — the app pushes the new columns, and PostgREST rejects unknown
+columns (such pushes are retried, then parked as failed).
+
+## Accounts: rules
+
+- Balance = opening balance + Σ non-deleted postings (SQL `SUM` of integers;
+  opening balance added in the domain layer).
+- Liabilities (credit cards, loans) hold negative balances; users enter the
+  amount *owed* and `domain/accounts.openingBalanceFromEntry` stores it negated.
+- A card payment is a **transfer** (two legs), never a second expense — see
+  `domain/accounts/__tests__/accounts.test.ts`.
+- Currency is immutable once any transaction or transfer references the
+  account (`AccountRepository.changeCurrency` enforces it); history is never
+  converted.
+- Accounts with history can only be archived. Archived accounts keep their
+  history and balances, disappear from active lists and totals, and must be
+  restored before receiving transactions (`canReceiveTransactions`).
+- Totals are per currency; a combined base-currency total is shown only when
+  every needed rate exists in `exchange_rates` (direct or inverse). Missing
+  rates are reported, never guessed.

@@ -8,6 +8,7 @@ import {
   isWithin,
   parseCalendarDate,
   startOfWeek,
+  toCalendarDateInZone,
 } from '../dates/calendar';
 import type { BudgetPeriodType, TransactionType, Weekday } from '../enums';
 import { divideAndRound } from '../money/decimal';
@@ -191,4 +192,19 @@ export function forecastPeriodSpending(
   const elapsed = compareDates(today, period.start) < 0 ? 0 : daysBetween(period.start, today) + 1;
   if (elapsed === 0) return 0;
   return Number(divideAndRound(BigInt(spentMinor) * BigInt(total), BigInt(elapsed)));
+}
+
+/**
+ * The budget period that is current for the user *right now*, resolved in
+ * their configured time zone (not the device clock's UTC date). At 23:30 on
+ * 31 Oct in New York it is still October's period even though UTC is already
+ * in November.
+ */
+export function currentBudgetPeriod(
+  budget: BudgetDefinition,
+  now: Date,
+  timeZone: string,
+  settings: PeriodSettings,
+): BudgetPeriod | null {
+  return getBudgetPeriod(budget, toCalendarDateInZone(now, timeZone), settings);
 }

@@ -49,9 +49,9 @@ same redirect twice (browser result + deep link).
    `npx supabase db push`.
 3. **Deploy the Edge Function**: `npx supabase functions deploy delete-account`.
 4. **Auth → URL configuration**: add redirect URLs
-   - `budgettracker-dev://auth/callback`
-   - `budgettracker-preview://auth/callback`
-   - `budgettracker://auth/callback`
+   - `moneymanager-dev://auth/callback`
+   - `moneymanager-preview://auth/callback`
+   - `moneymanager://auth/callback`
    - `exp://**` (only while using Expo Go/dev tooling)
 5. **Auth → Providers → Email**: keep "Confirm email" on; set minimum password
    length ≥ 8 and enable leaked-password protection.

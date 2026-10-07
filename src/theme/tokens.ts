@@ -150,3 +150,22 @@ export const motion = {
   fast: 150,
   normal: 250,
 } as const;
+
+/**
+ * Account accent colors. Used as the background of account icons with a
+ * white glyph, so each must keep ≥ 3:1 contrast against white in both themes
+ * (verified in theme/__tests__/contrast.test.ts). Stored on accounts as hex.
+ */
+export const ACCOUNT_COLORS = [
+  '#2F55D4', // blue
+  '#13774F', // green
+  '#0E7490', // teal
+  '#6B46C1', // violet
+  '#BE185D', // pink
+  '#C02A35', // red
+  '#B45309', // orange
+  '#8A5A00', // amber
+  '#4D5868', // slate
+  '#1E3A8A', // navy
+] as const;
+export type AccountColor = (typeof ACCOUNT_COLORS)[number];

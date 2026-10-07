@@ -2,6 +2,7 @@ import type { SqlDatabase } from '@/database/types';
 
 import type { RepositoryContext } from './sqlite/shared';
 import { SqliteAccountRepository } from './sqlite/SqliteAccountRepository';
+import { SqliteExchangeRateRepository } from './sqlite/SqliteExchangeRateRepository';
 import { SqlitePreferencesRepository } from './sqlite/SqlitePreferencesRepository';
 import type { Repositories } from './types';
 
@@ -13,5 +14,6 @@ export function createRepositories(db: SqlDatabase, ctx: RepositoryContext): Rep
   return {
     accounts: new SqliteAccountRepository(db, ctx),
     preferences: new SqlitePreferencesRepository(db, ctx),
+    exchangeRates: new SqliteExchangeRateRepository(db),
   };
 }

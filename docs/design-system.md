@@ -79,3 +79,21 @@ empty, or error — never a blank screen.
 
 Tabs: **Home · Transactions · [+] · Budgets · Reports · More**. The centre button
 opens the Add sheet (native form sheet) for Expense / Income / Transfer.
+
+## Phase 1 additions
+
+| Component | Notes |
+| --- | --- |
+| `OptionPicker` | Field + bottom sheet; searchable; radio semantics; locked state with explanation |
+| `ChoiceChips` | Single-select chips (radiogroup), wraps for Dynamic Type |
+| `SwitchRow` | Whole row is one accessible switch |
+| `ToastHost` / `showToast` | Success feedback, announced to screen readers; slide/fade only without reduce-motion |
+| `TextField` | Added `prefix` (currency symbol), `trailing` (sign toggle), `footer` (live preview) |
+| `AccountIcon`, `AccountRow`, `TotalBalanceCard`, `AccountForm` | Account feature components |
+
+Account accent colors (`ACCOUNT_COLORS`) are used behind white glyphs
+(`colors.onAccent`); each passes 4.5:1 (tested). Color is never the only cue —
+selected swatches show a check mark and have names for screen readers.
+
+Motion: onboarding uses `slide_from_right` transitions and toasts animate;
+both become instant when the OS reduce-motion setting is on.

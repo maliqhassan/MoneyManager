@@ -61,3 +61,52 @@ export function parseMoneyInput(
   const amountMinor = Number(magnitude) * (negative ? -1 : 1);
   return { ok: true, value: { amountMinor: amountMinor === 0 ? 0 : amountMinor, currency } };
 }
+
+/**
+ * Lenient parser for amount *entry* fields.
+ *
+ * Device keyboards do not always match the user's chosen number format (a
+ * German keyboard types "," on a phone set to en-US formatting). Treating the
+ * wrong character as a grouping separator would silently store 100× the
+ * intended amount, so the decimal separator is inferred:
+ *
+ * - both "." and "," present → the LAST one is the decimal separator;
+ * - one kind, repeated ("1,234,567") → grouping;
+ * - one kind, once → decimal if it is the preferred decimal separator,
+ *   otherwise grouping only when it looks like thousands ("1,250"), else
+ *   decimal ("12,50").
+ *
+ * Apostrophes (Swiss grouping) and spaces are ignored.
+ */
+export function parseAmountEntry(
+  input: string,
+  currency: CurrencyCode,
+  preferredDecimal: string = DEFAULT_SEPARATORS.decimal,
+): ParseMoneyResult {
+  const text = input.replace(WHITESPACE, '').replace(/['’]/g, '');
+  if (text.length === 0) return { ok: false, error: 'empty' };
+
+  const unsigned = text.replace(/^[-\u2212]/, '');
+  const dots = (unsigned.match(/\./g) ?? []).length;
+  const commas = (unsigned.match(/,/g) ?? []).length;
+
+  let decimal: string;
+  if (dots > 0 && commas > 0) {
+    decimal = unsigned.lastIndexOf('.') > unsigned.lastIndexOf(',') ? '.' : ',';
+  } else if (dots + commas === 0) {
+    decimal = preferredDecimal === ',' ? ',' : '.';
+  } else {
+    const char = dots > 0 ? '.' : ',';
+    const count = dots + commas;
+    if (count > 1) {
+      decimal = char === '.' ? ',' : '.';
+    } else if (char === preferredDecimal) {
+      decimal = char;
+    } else {
+      const [before = '', after = ''] = unsigned.split(char);
+      const looksLikeThousands = after.length === 3 && before.length >= 1 && before.length <= 3;
+      decimal = looksLikeThousands ? (char === '.' ? ',' : '.') : char;
+    }
+  }
+  return parseMoneyInput(text, currency, { decimal, group: decimal === '.' ? ',' : '.' });
+}

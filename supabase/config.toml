@@ -1,7 +1,7 @@
 # Supabase CLI configuration for LOCAL development (npx supabase start).
 # Hosted project settings (auth providers, redirect URLs, SMTP) are configured
 # in the Supabase dashboard — see docs/authentication.md.
-project_id = "budgettracker"
+project_id = "moneymanager"
 
 [api]
 enabled = true
@@ -16,11 +16,11 @@ major_version = 17
 
 [auth]
 enabled = true
-site_url = "budgettracker-dev://"
+site_url = "moneymanager-dev://"
 additional_redirect_urls = [
-  "budgettracker-dev://auth/callback",
-  "budgettracker-preview://auth/callback",
-  "budgettracker://auth/callback",
+  "moneymanager-dev://auth/callback",
+  "moneymanager-preview://auth/callback",
+  "moneymanager://auth/callback",
   "exp://**",
 ]
 jwt_expiry = 3600

@@ -1,6 +1,6 @@
 import type { Money } from '@/domain/money/money';
-import { formatMoney, type MoneyFormatOptions } from '@/i18n/format';
-import { useFormatLocale } from '@/hooks/useFormatLocale';
+import type { MoneyFormatOptions } from '@/i18n/format';
+import { useFormatter } from '@/i18n/FormatContext';
 
 import { Text, type TextProps } from './Text';
 
@@ -12,9 +12,9 @@ export interface MoneyTextProps extends Omit<TextProps, 'children' | 'tone'> {
 }
 
 /**
- * Displays a monetary amount with exact, locale-aware formatting and
- * tabular figures. Sign is never conveyed by color alone (the minus/plus is
- * always rendered) to stay accessible for color-blind users.
+ * Displays a monetary amount with exact, locale-aware formatting (from the
+ * user's number-format preference) and tabular figures. Sign is never
+ * conveyed by color alone (the minus/plus is always rendered).
  */
 export function MoneyText({
   value,
@@ -23,7 +23,7 @@ export function MoneyText({
   variant = 'amount',
   ...rest
 }: MoneyTextProps) {
-  const locale = useFormatLocale();
+  const formatter = useFormatter();
   const tone =
     !colorBySign || value.amountMinor === 0
       ? 'text'
@@ -32,7 +32,7 @@ export function MoneyText({
         : 'negative';
   return (
     <Text variant={variant} tone={tone} {...rest}>
-      {formatMoney(value, locale, format)}
+      {formatter.money(value, format)}
     </Text>
   );
 }

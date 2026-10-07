@@ -56,6 +56,9 @@ export const queryKeys = {
     all: ['accounts'] as const,
     list: (includeArchived: boolean) => ['accounts', 'list', { includeArchived }] as const,
     balances: () => ['accounts', 'balances'] as const,
+    detail: (id: string) => ['accounts', 'detail', id] as const,
+    overview: (baseCurrency: string, today: string) =>
+      ['accounts', 'overview', { baseCurrency, today }] as const,
   },
   preferences: {
     current: () => ['user_preferences'] as const,

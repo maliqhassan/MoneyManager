@@ -8,13 +8,11 @@ import { MoneyText } from '../MoneyText';
 import { ProgressBar } from '../ProgressBar';
 import { EmptyState, ErrorState } from '../StateViews';
 
-jest.mock('@/hooks/useFormatLocale', () => ({ useFormatLocale: () => 'en-US' }));
-
 describe('Button', () => {
   it('is an accessible button that fires onPress', async () => {
     const onPress = jest.fn();
     await renderWithProviders(<Button label="Save" onPress={onPress} />);
-    fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
@@ -24,7 +22,7 @@ describe('Button', () => {
     const button = screen.getByRole('button', { name: 'Save' });
     expect(button).toBeBusy();
     expect(button).toBeDisabled();
-    fireEvent.press(button);
+    await fireEvent.press(button);
     expect(onPress).not.toHaveBeenCalled();
   });
 });
@@ -61,7 +59,7 @@ describe('state views', () => {
       />,
     );
     expect(screen.getByText('Nothing here')).toBeOnTheScreen();
-    fireEvent.press(screen.getByRole('button', { name: 'Add' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Add' }));
     expect(onAction).toHaveBeenCalled();
   });
 

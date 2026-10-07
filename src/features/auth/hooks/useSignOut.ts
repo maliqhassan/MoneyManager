@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { logger } from '@/services/monitoring/logger';
 import { useData } from '@/providers/DataProvider';
+import { useOnboardingStore } from '@/features/onboarding/store';
 import { useAuthStore } from '@/stores/authStore';
 
 import { deleteAccountRemote, signOut } from '../services/authService';
@@ -31,6 +32,10 @@ export function useSignOut() {
       try {
         await beforeWipe?.();
         await destroyLocalData();
+        // Per-user onboarding draft goes with the user's data; device-level
+        // settings (theme) are kept.
+        const userId = store.user?.id;
+        if (userId) useOnboardingStore.getState().clear(userId);
         await signOut();
       } catch (error) {
         logger.error('Sign-out failed', error);

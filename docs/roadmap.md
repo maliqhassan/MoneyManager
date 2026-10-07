@@ -9,16 +9,21 @@ with RLS + pgTAP tests, SQLite schema + migrations, repository pattern, offline
 sync engine (tested), Supabase Auth (email, Google, recovery, offline session),
 SecureStore sessions, account deletion Edge Function, documentation.
 
-## Phase 1 — Onboarding & accounts (next)
+## Phase 1 — Onboarding, regional preferences & accounts ✅ (2026-10-08)
 
-- Onboarding: confirm base currency, locale, first day of week, month start day
-  (writes `user_preferences`).
-- Accounts: list (balances, archived section), create/edit (type, currency,
-  opening balance, credit limit), archive, delete-if-empty.
-- Settings: base currency / regional preferences screen.
-- Use `user_preferences.locale` for formatting (`useFormatLocale`).
+- Six-step onboarding (welcome → currency → region → preferences → first
+  account → ready); progress persisted per user, completion synced
+  (`user_preferences.onboarding_completed_at`).
+- Regional preferences: region, base currency, language, date format, number
+  format, first day of week, time zone — applied app-wide via `FormatProvider`.
+- Accounts: list (grouped, per-currency totals, archived section), detail,
+  create, edit (currency locked once history exists), archive/restore,
+  delete-if-empty; credit cards stored as negative balances with limit and
+  available credit.
+- Home on real data; Settings hub (appearance, regional, sync, privacy, about).
+- Migration 2 (Supabase + local) for regional preference columns.
 
-## Phase 2 — Transactions & categories
+## Phase 2 — Transactions & categories (next)
 
 - Expense / income / refund forms (amount input with locale separators,
   account, category, payee, date, notes, tags).

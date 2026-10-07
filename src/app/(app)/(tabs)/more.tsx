@@ -1,9 +1,9 @@
-import Constants from 'expo-constants';
-import { useState } from 'react';
+import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 
 import {
+  Badge,
   Button,
   Card,
   Divider,
@@ -14,10 +14,9 @@ import {
   Text,
 } from '@/components/ui';
 import type { ThemeMode } from '@/domain/enums';
-import { FormError } from '@/features/auth/components/FormError';
+import { findCountry } from '@/domain/regional/countries';
 import { useSignOut } from '@/features/auth/hooks/useSignOut';
-import { formatDateTime } from '@/i18n/format';
-import { getDeviceLocale } from '@/i18n/locale';
+import { useFormatter } from '@/i18n/FormatContext';
 import { useData } from '@/providers/DataProvider';
 import { useAuthStore } from '@/stores/authStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -33,35 +32,55 @@ const THEME_OPTIONS: {
   { mode: 'dark', labelKey: 'more.themeDark' },
 ];
 
-export default function MoreScreen() {
+/** Settings hub. Every row here works; unavailable features are labelled as such. */
+export default function SettingsScreen() {
   const { t } = useTranslation();
   const styles = useStyles();
+  const formatter = useFormatter();
   const email = useAuthStore((s) => s.user?.email);
   const themeMode = useSettingsStore((s) => s.themeMode);
   const setThemeMode = useSettingsStore((s) => s.setThemeMode);
   const sync = useSyncStore();
   const { syncEngine } = useData();
-  const { requestSignOut, requestDeleteAccount, busy } = useSignOut();
-  const [deleteError, setDeleteError] = useState<unknown>(null);
-  const locale = getDeviceLocale();
+  const { requestSignOut } = useSignOut();
+  const { settings } = formatter;
 
-  const confirmDelete = () =>
-    Alert.alert(t('more.deleteAccount'), t('more.deleteAccountConfirm'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('more.deleteAccount'),
-        style: 'destructive',
-        onPress: () => void requestDeleteAccount(setDeleteError),
-      },
-    ]);
+  const regionalSummary = [
+    findCountry(settings.region)?.name,
+    settings.baseCurrency,
+    settings.timeZone,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <Screen edges={[]}>
-      {email ? (
-        <Text variant="bodySmall" tone="textSecondary">
-          {t('more.signedInAs', { email })}
-        </Text>
-      ) : null}
+      <Card padding="none">
+        <ListItem
+          icon="wallet-outline"
+          title={t('more.accounts')}
+          subtitle={t('more.accountsHint')}
+          onPress={() => router.push('/accounts')}
+        />
+      </Card>
+
+      <SectionHeader title={t('more.preferencesSection')} />
+      <Card padding="none">
+        <ListItem
+          icon="globe-outline"
+          title={t('more.regional')}
+          subtitle={regionalSummary}
+          onPress={() => router.push('/settings/regional')}
+        />
+        <Divider inset={64} />
+        <ListItem
+          icon="notifications-outline"
+          title={t('more.notifications')}
+          subtitle={t('more.notificationsHint')}
+          trailing={<Badge label={t('common.notAvailableYet')} />}
+          showChevron={false}
+        />
+      </Card>
 
       <SectionHeader title={t('more.appearance')} />
       <Card padding="none">
@@ -85,10 +104,9 @@ export default function MoreScreen() {
         <View style={styles.syncBody}>
           <Text variant="bodyStrong">{t(`sync.${sync.phase}`)}</Text>
           <Text variant="bodySmall" tone="textSecondary">
-            {t('more.lastSynced')}:{' '}
-            {sync.lastSyncedAt
-              ? formatDateTime(sync.lastSyncedAt, locale.languageTag, locale.timeZone)
-              : t('more.never')}
+            {`${t('more.lastSynced')}: ${
+              sync.lastSyncedAt ? formatter.dateTime(sync.lastSyncedAt) : t('more.never')
+            }`}
           </Text>
           {sync.pendingCount > 0 ? (
             <Text variant="bodySmall" tone="textSecondary">
@@ -119,25 +137,30 @@ export default function MoreScreen() {
 
       <SectionHeader title={t('more.account')} />
       <Card padding="none">
+        {email ? (
+          <>
+            <ListItem icon="person-circle-outline" title={t('more.signedInAs', { email })} />
+            <Divider inset={64} />
+          </>
+        ) : null}
+        <ListItem
+          icon="shield-checkmark-outline"
+          title={t('more.privacy')}
+          onPress={() => router.push('/settings/privacy')}
+        />
+        <Divider inset={64} />
+        <ListItem
+          icon="information-circle-outline"
+          title={t('more.about')}
+          onPress={() => router.push('/settings/about')}
+        />
+        <Divider inset={64} />
         <ListItem
           icon="log-out-outline"
           title={t('auth.signOut')}
           onPress={() => void requestSignOut()}
         />
-        <Divider inset={64} />
-        <ListItem
-          icon="trash-outline"
-          title={t('more.deleteAccount')}
-          destructive
-          onPress={confirmDelete}
-        />
       </Card>
-      <FormError error={deleteError} />
-      {busy ? null : (
-        <Text variant="caption" tone="textMuted" align="center">
-          {t('more.version', { version: Constants.expoConfig?.version ?? '—' })}
-        </Text>
-      )}
     </Screen>
   );
 }

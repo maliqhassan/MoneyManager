@@ -122,3 +122,52 @@ and forwards warnings/errors to a pluggable `ErrorReporter`. Sentry plugs in via
 | Theme mode is per device (not synced) | Users often want different themes per device. |
 | JS tabs + native form sheet for "Add" | Custom centre button; accessible native sheet. |
 | Charts library deferred to Reports phase | Avoids an unused dependency now. |
+
+## Signed-in gate & onboarding (Phase 1)
+
+`src/app/(app)/_layout.tsx` mounts `DataProvider` → `FormatProvider` → sync
+scheduler, then decides with the pure `resolveAppGate`
+(`features/onboarding/model.ts`):
+
+| Preferences row | Online / first sync | Result |
+| --- | --- | --- |
+| loading | — | setting-up screen |
+| exists, `onboarding_completed_at` set | — | app (tabs) |
+| exists, not completed | — | onboarding |
+| missing | online, first sync not finished | setting-up screen (never flash onboarding at a returning user) |
+| missing | offline / sync failed | onboarding (completion waits for the row) |
+
+- **Progress** (current step + draft choices + id of the first account) is
+  persisted per user on the device (`features/onboarding/store.ts`), so a
+  restart resumes at the same step. It is cleared on completion and on sign-out.
+- **Completion** lives only in the synced `user_preferences` row, so other
+  devices skip onboarding. The final step writes all choices in one
+  preferences update (`completeOnboarding`), which works offline once the
+  server-created row has synced.
+- The first account is created through the normal `AccountRepository` (outbox).
+
+## Formatting pipeline
+
+```
+user_preferences ──► FormatProvider ──► createFormatter(settings) ──► useFormatter()
+ (or device defaults)                    money / number / date / dateTime / today
+```
+
+- One `Formatter` per settings object; screens never call `Intl` directly.
+- `numberFormat` maps to a representative locale (en-US, de-DE, fr-FR, de-CH) so
+  grouping and separators always come from Intl; `dateFormat` controls numeric
+  date order (MDY / DMY / YMD) or follows the locale.
+- Amount **entry** is parsed with `parseAmountEntry`, which tolerates the device
+  keyboard's decimal separator (e.g. "12,50" on an en-US profile = 12.50, not
+  1 250) — a safeguard against 100× errors.
+- During onboarding the layout provides a formatter built from the *draft*, so
+  previews and amount entry match choices immediately.
+
+## Time zones
+
+The user's configured time zone (not the device clock's UTC date) decides
+"today" (`formatter.today()`, `todayInZone`) and the current budget period
+(`currentBudgetPeriod`). Transactions store `local_date` + `time_zone` at entry,
+so later changes of time zone never move past transactions between days. Bill
+due dates and recurrences are calendar dates, computed with pure calendar
+arithmetic (no UTC conversion).
