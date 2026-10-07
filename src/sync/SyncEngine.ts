@@ -403,7 +403,7 @@ export class SyncEngine {
     columns: ReadonlySet<string>,
     syncStatus: 'synced' | 'conflict',
   ): Promise<void> {
-    const values: LocalRow = { ...toLocalValues(remote, columns), sync_status: syncStatus };
+    const values: LocalRow = { ...toLocalValues(remote, columns, table), sync_status: syncStatus };
     const names = Object.keys(values);
     const placeholders = names.map(() => '?').join(', ');
     const updates = names

@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, type RenderOptions } from '@testing-library/react-native';
 import type { ReactElement, ReactNode } from 'react';
 import { I18nextProvider } from 'react-i18next';
@@ -6,7 +7,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { initI18n } from '@/i18n';
 import { FormatContext } from '@/i18n/FormatContext';
 import { createFormatter, type FormatSettings } from '@/i18n/formatter';
+import { DataContext, type DataContextValue } from '@/providers/DataProvider';
+import { SyncEngine } from '@/sync/SyncEngine';
 import { buildTheme, ThemeContext } from '@/theme/ThemeProvider';
+
+import { FakeRemote } from './fakeRemote';
+import { sequentialIds } from './factories';
+import type { Ledger } from './ledger';
 
 const i18n = initI18n();
 
@@ -26,26 +33,46 @@ export const TEST_FORMAT_SETTINGS: FormatSettings = {
   baseCurrency: 'USD',
 };
 
+function dataValue(ledger: Ledger): DataContextValue {
+  return {
+    db: ledger.db,
+    repositories: ledger.repos,
+    syncEngine: new SyncEngine({ db: ledger.db, remote: new FakeRemote(), newId: sequentialIds() }),
+    destroyLocalData: async () => undefined,
+    onLocalChange: () => () => undefined,
+  };
+}
+
 /**
  * Renders a component with the app's theme, translations and a deterministic
- * formatter, without persisted stores or native modules.
+ * formatter. Pass a `ledger` (test/ledger.ts) for components that read data
+ * through repositories; it is backed by real in-memory SQLite.
  */
 export function renderWithProviders(
   ui: ReactElement,
   {
     scheme = 'light',
     format = TEST_FORMAT_SETTINGS,
+    ledger,
     ...options
-  }: RenderOptions & { scheme?: 'light' | 'dark'; format?: FormatSettings } = {},
+  }: RenderOptions & { scheme?: 'light' | 'dark'; format?: FormatSettings; ledger?: Ledger } = {},
 ) {
   const theme = buildTheme(scheme, true);
   const formatter = createFormatter(format);
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, networkMode: 'always', gcTime: Infinity } },
+  });
+  const data = ledger ? dataValue(ledger) : null;
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>
       <I18nextProvider i18n={i18n}>
-        <ThemeContext.Provider value={theme}>
-          <FormatContext.Provider value={formatter}>{children}</FormatContext.Provider>
-        </ThemeContext.Provider>
+        <QueryClientProvider client={queryClient}>
+          <DataContext.Provider value={data}>
+            <ThemeContext.Provider value={theme}>
+              <FormatContext.Provider value={formatter}>{children}</FormatContext.Provider>
+            </ThemeContext.Provider>
+          </DataContext.Provider>
+        </QueryClientProvider>
       </I18nextProvider>
     </SafeAreaProvider>
   );

@@ -8,6 +8,7 @@ import {
   formatAmountForInput,
   formatBasisPoints,
   formatDateTime,
+  formatLocalTime,
   formatDateWithPreference,
   formatMoney,
   formatNumber,
@@ -44,6 +45,8 @@ export interface Formatter {
   date: (date: string, style?: 'numeric' | 'medium' | 'long') => string;
   /** ISO timestamp → display in the user's time zone. */
   dateTime: (iso: string) => string;
+  /** "HH:mm" wall-clock time → locale display ("13:30" / "1:30 PM"). */
+  time: (localTime: string) => string;
   currencySymbol: (currency: CurrencyCode) => string;
   amountForInput: (value: Money) => string;
   /** Today's date in the user's configured time zone. */
@@ -67,6 +70,7 @@ export function createFormatter(settings: FormatSettings): Formatter {
     date: (date, style = 'numeric') =>
       formatDateWithPreference(date, settings.locale, settings.dateFormat, style),
     dateTime: (iso) => formatDateTime(iso, settings.locale, settings.timeZone),
+    time: (localTime) => formatLocalTime(localTime, settings.locale),
     currencySymbol: (currency) => getCurrencySymbol(currency, numberLocale),
     amountForInput: (value) => formatAmountForInput(value, separators),
     today: (now) => todayInZone(settings.timeZone, now),

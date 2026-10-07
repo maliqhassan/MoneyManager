@@ -151,6 +151,8 @@ export interface Transaction extends SyncedEntity {
   importBatchId: Uuid | null;
   /** Deterministic fingerprint used for import duplicate detection. */
   importHash: string | null;
+  /** Normalised merchant (domain/merchants) for rules and history; payee keeps the original. */
+  merchantKey: string | null;
 }
 
 export interface TransactionSplit extends SyncedEntity {
@@ -290,6 +292,10 @@ export interface Attachment extends SyncedEntity {
   mimeType: string;
   sizeBytes: number;
   fileName: string;
+  /** Device-local copy of the file (only on the device that added it). */
+  localUri: string | null;
+  /** Device-local upload state of the file itself (the row syncs independently). */
+  uploadStatus: 'pending' | 'uploaded' | 'failed';
 }
 
 export interface ImportBatch extends SyncedEntity {

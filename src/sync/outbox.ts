@@ -77,7 +77,12 @@ export async function enqueueChange(
   );
 }
 
-/** Entries ready to push, oldest first (preserves causal order). */
+/**
+ * Entries ready to push in exact insertion order (SQLite rowid). Several rows
+ * written in one local transaction share a timestamp, and parents (a transfer,
+ * a transaction) must reach the server before their children (legs, splits,
+ * tags, attachments) or foreign keys would reject them.
+ */
 export async function getDueEntries(
   db: SqlExecutor,
   now: string,
@@ -86,7 +91,7 @@ export async function getDueEntries(
   const rows = await db.getAll<OutboxRow>(
     `SELECT * FROM sync_outbox
      WHERE status = 'pending' AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
-     ORDER BY created_at, id
+     ORDER BY rowid
      LIMIT ?`,
     [now, limit],
   );

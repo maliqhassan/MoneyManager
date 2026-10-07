@@ -23,17 +23,37 @@ SecureStore sessions, account deletion Edge Function, documentation.
 - Home on real data; Settings hub (appearance, regional, sync, privacy, about).
 - Migration 2 (Supabase + local) for regional preference columns.
 
-## Phase 2 — Transactions & categories (next)
+## Phase 2 — Transactions & categories ✅
 
-- Expense / income / refund forms (amount input with locale separators,
-  account, category, payee, date, notes, tags).
-- Transfers (paired legs, cross-currency with received amount).
-- Split transactions; duplicate; soft delete with undo.
-- Transactions list: keyset pagination, search, filters.
-- Categories management (custom, subcategories, archive; translated system names).
-- Merchants + category rules, automatic categorisation.
+- Expense / income / refund forms (React Hook Form + Zod; locale-aware amount
+  entry; account, category, merchant, date + time in the user's time zone,
+  notes, tags, receipts). Refunds can link to the original expense.
+- Transfers written as one transfer row + two legs in a single SQLite
+  transaction; cross-currency transfers record the amount received. Credit
+  card payments are transfers, so they never count as spending.
+- Exact split transactions (≥ 2 lines, must sum to the total; editor shows
+  allocated / remaining). Edit, duplicate (transfers as a pair) and delete
+  (with confirmation; transfers delete both legs).
+- Transactions list: date-grouped, keyset pagination, locale-safe search
+  (merchant, notes, category, tag), filters (accounts, types, categories incl.
+  subcategories and split lines, tags, date range, amount range).
+- Categories: server-seeded default tree (51, one nesting level), custom
+  categories/subcategories, reorder, archive/restore (cascades to children),
+  delete only when unused; translated system names until renamed.
+- Merchant normalisation + deterministic categorisation (merchant rules →
+  last category used for that merchant). No AI.
+- Receipts: picked from camera/library, copied into app storage, uploaded to
+  the private `attachments` bucket after sync with retry.
+- Home on real data: cash flow for the current budget period, top spending
+  categories, recent transactions, quick add actions.
+- Migration 3 (Supabase + local): merchant keys, search column, list indexes,
+  default category tree, integrity triggers (category parent, transaction
+  currency = account currency, account currency locked once used).
 
-## Phase 3 — Multi-currency rates
+Deferred: undo after delete (confirmation dialog instead); removing storage
+objects for deleted receipts before account deletion.
+
+## Phase 3 — Multi-currency rates (next)
 
 - `exchange-rates` Edge Function (scheduled) populating `exchange_rates`.
 - Local rate cache + lookup; base-currency snapshots on entry; manual rate override.

@@ -17,3 +17,4 @@ export { type Choice, ChoiceChips } from './ChoiceChips';
 export { OptionPicker, type PickerOption } from './OptionPicker';
 export { SwitchRow } from './SwitchRow';
 export { ToastHost } from './ToastHost';
+export { MultiChoiceChips } from './MultiChoiceChips';

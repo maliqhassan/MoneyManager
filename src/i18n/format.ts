@@ -212,3 +212,13 @@ export function buildLocaleTag(language: string, region: string | null): string 
     return 'en-US';
   }
 }
+
+/** "HH:mm" → locale-formatted time, independent of any time zone. */
+export function formatLocalTime(localTime: string, locale: string): string {
+  const [h = 0, m = 0] = localTime.split(':').map(Number);
+  return new Intl.DateTimeFormat(locale, {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(2000, 0, 1, h, m)));
+}

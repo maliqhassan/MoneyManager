@@ -5,6 +5,8 @@ import { AppState } from 'react-native';
 
 import { restoreSession } from '@/features/auth/services/authService';
 import { useData } from '@/providers/DataProvider';
+import { uploadPendingReceipts } from '@/services/receipts/uploader';
+import { getSupabase } from '@/services/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
 import { useSyncStore } from '@/stores/syncStore';
 
@@ -23,7 +25,7 @@ const PERIODIC_SYNC_MS = 5 * 60_000;
  * be refreshed at launch) reconnecting first restores the session.
  */
 export function useSyncScheduler(): void {
-  const { syncEngine, onLocalChange } = useData();
+  const { syncEngine, onLocalChange, repositories } = useData();
   const queryClient = useQueryClient();
   const authStatus = useAuthStore((s) => s.status);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -46,6 +48,10 @@ export function useSyncScheduler(): void {
       const result = await syncEngine.sync();
       // Pulled rows change what local queries return.
       if (result.pulled > 0 && !disposed) void queryClient.invalidateQueries();
+      // Receipt files upload after their rows have synced; failures retry next run.
+      if (result.errorCode === null && !disposed) {
+        void uploadPendingReceipts(repositories.attachments, getSupabase());
+      }
     };
 
     const scheduleSoon = () => {
@@ -89,5 +95,5 @@ export function useSyncScheduler(): void {
       clearInterval(interval);
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
-  }, [syncEngine, onLocalChange, queryClient, authStatus]);
+  }, [syncEngine, onLocalChange, queryClient, authStatus, repositories]);
 }

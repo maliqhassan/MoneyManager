@@ -112,6 +112,12 @@ deterministic regardless of where the user travels later.
 | `finance/splits.ts` | Split validation |
 | `finance/budget.ts` | Periods (weekly/monthly with start day/custom), spending by category, rollover, progress, forecast |
 | `dates/calendar.ts` | Pure `YYYY-MM-DD` arithmetic; local date in a time zone |
+| `dates/zoned.ts` | Wall-clock date + time in an IANA zone → UTC instant (DST gaps move forward, repeated times take the first occurrence) |
+| `transactions/transactions.ts` | Signs by entry type, split base allocation and remaining, day grouping, amount-filter bounds per currency exponent |
+| `transactions/insights.ts` | Period cash flow and top categories in the base currency (missing rates reported, never guessed) |
+| `merchants/normalize.ts` | Merchant key ("WALMART #1234", "Wal-Mart" → `walmart`) |
+| `categorization/suggest.ts` | Deterministic category suggestion: rules by priority, then the merchant's last category |
+| `text/search.ts` | Locale-safe search normalisation (case, diacritics, ß) and LIKE escaping |
 
 ## Storage
 
@@ -131,7 +137,12 @@ folder, deletes the auth user. All tables cascade from `auth.users`.
   foundation phase: 29 checks covering bootstrap, RLS isolation, insert/update
   ownership, version bumps, stale-update conflict detection, no hard deletes,
   sign/rate checks, composite FKs, storage folder policies, anon denial and
-  deletion cascade.
+  deletion cascade. Phase 2 extended it (category tree seed + backfill of
+  existing users, idempotent re-seed, integrity triggers, RLS for splits, tags,
+  rules and attachments).
+- `rls.test.sql` itself (33 assertions) was executed on embedded Postgres with
+  a minimal pgTAP shim and Supabase auth/storage stubs; it has not yet been run
+  against a real Supabase stack.
 
 ## Migrations
 
@@ -139,6 +150,7 @@ folder, deletes the auth user. All tables cascade from `auth.users`.
 | --- | --- | --- | --- |
 | 1 | `20261007120000_initial_schema.sql` | `001_initial.ts` | Core schema, RLS, triggers, storage |
 | 2 | `20261008090000_regional_preferences.sql` | `002_regional_preferences.ts` | `region`, `language`, `date_format`, `number_format`, `onboarding_completed_at`; locale/time-zone format checks |
+| 3 | `20261009090000_transactions_categories.sql` | `003_transactions.ts` | `transactions.merchant_key`; local-only `search_text`; list/filter indexes; default category tree (`app.default_categories`, `app.seed_default_categories`, backfill); triggers for category parents, transaction currency and account-currency lock |
 
 Deploy order: **apply the Supabase migration before shipping an app build that
 uses it** — the app pushes the new columns, and PostgREST rejects unknown
@@ -161,3 +173,36 @@ columns (such pushes are retried, then parked as failed).
 - Totals are per currency; a combined base-currency total is shown only when
   every needed rate exists in `exchange_rates` (direct or inverse). Missing
   rates are reported, never guessed.
+
+## Transactions & categories: rules
+
+- Entry types: `expense` (negative), `income` and `refund` (positive),
+  `transfer` legs (one negative, one positive, sharing a `transfers` row).
+  Forms take positive magnitudes; `domain/transactions.signedAmount` applies the
+  sign. A refund may link to the expense it reverses (`refund_of_transaction_id`).
+- A transfer is written as the `transfers` row plus both legs in one SQLite
+  transaction; editing or deleting one leg edits/deletes the pair. Cross-currency
+  transfers record the amount received; there is no guessed rate.
+- `transactions.currency` always equals the account currency (trigger). Account
+  currency cannot change once the account has transactions or transfers.
+- Archived accounts cannot receive new transactions; existing ones stay
+  editable. Archived categories cannot be chosen for new entries (except the one
+  already on an entry being edited).
+- Splits: at least two lines that sum **exactly** to the total; base amounts are
+  allocated with largest remainder so the split base total equals the parent's.
+  Category spending and filters read split lines, never the parent.
+- Base-currency snapshot at entry: identity when currencies match, otherwise the
+  latest rate on or before the entry date (direct or inverse). With no rate the
+  amount is stored with `base_fx_source = 'unconverted'` and excluded from
+  base totals, which then say they are incomplete.
+- `local_date` + `time_zone` are set at entry; `occurred_at` is derived from the
+  wall-clock time in that zone. Lists group and paginate by
+  `(local_date, occurred_at, id)` (keyset).
+- Categories: one nesting level, parent and child share the kind. Defaults are
+  created **only on the server** (sign-up trigger + backfill), so devices cannot
+  create duplicates; `system_key` drives translation while the seeded name is
+  unchanged. Archiving a parent archives its children; restoring a child needs
+  an active parent. Delete is allowed only when no transaction, split, budget
+  allocation or rule uses the category and it has no subcategories.
+- Search uses the local-only `search_text` column (normalised merchant + notes,
+  derived again on pull) plus category and tag names.

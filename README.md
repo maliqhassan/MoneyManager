@@ -4,10 +4,11 @@ A global, offline-first personal finance app — **Track → Budget → Understa
 
 React Native (Expo SDK 57) · TypeScript (strict) · Expo Router · SQLite · Supabase · Zustand · TanStack Query · React Hook Form + Zod
 
-> **Status: Phase 1 complete.** Foundation plus onboarding, regional preferences and accounts. Architecture, data model, auth, local database, sync engine,
-> design system and navigation shell are in place and tested. Feature screens
-> (accounts, transactions, budgets, …) are built on top in the phases listed in
-> [docs/roadmap.md](docs/roadmap.md).
+> **Status: Phase 2 complete.** Foundation, onboarding, regional preferences,
+> accounts, and transactions & categories (expenses, income, refunds, transfers,
+> splits, tags, receipts, search/filters, category management, deterministic
+> categorisation). Budgets, bills, goals and reports follow in the phases listed
+> in [docs/roadmap.md](docs/roadmap.md).
 
 ## Quick start
 

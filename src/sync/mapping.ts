@@ -38,7 +38,11 @@ export function toRemotePayload(
  * Postgres row → local SQLite values, restricted to columns that exist
  * locally (`localColumns`). Booleans become 0/1, objects become JSON text.
  */
-export function toLocalValues(remote: RemoteRow, localColumns: ReadonlySet<string>): LocalRow {
+export function toLocalValues(
+  remote: RemoteRow,
+  localColumns: ReadonlySet<string>,
+  table?: SyncTableName,
+): LocalRow {
   const values: LocalRow = {};
   for (const [column, value] of Object.entries(remote)) {
     if (!localColumns.has(column) || column === 'sync_status') continue;
@@ -46,6 +50,12 @@ export function toLocalValues(remote: RemoteRow, localColumns: ReadonlySet<strin
     else if (typeof value === 'boolean') values[column] = value ? 1 : 0;
     else if (typeof value === 'number' || typeof value === 'string') values[column] = value;
     else values[column] = JSON.stringify(value);
+  }
+  const derived = table ? getSyncTable(table).derive?.(remote) : undefined;
+  if (derived) {
+    for (const [column, value] of Object.entries(derived)) {
+      if (localColumns.has(column)) values[column] = value;
+    }
   }
   return values;
 }

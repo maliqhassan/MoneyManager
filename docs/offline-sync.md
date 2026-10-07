@@ -28,7 +28,8 @@ not lost. A delete supersedes an upsert.
 
 ## Push
 
-For each due entry, oldest first (preserves causal order, parents before children):
+For each due entry, in insertion order (`rowid`), which preserves causal order: a
+transfer row is pushed before its legs, a transaction before its splits:
 
 1. Mark `in_flight`, read the current local row.
 2. `version = 0` (never synced) → **insert** if absent (`ON CONFLICT DO NOTHING`).
@@ -67,7 +68,19 @@ Per table in dependency order, rows with `(updated_at, id) > cursor`, paged
 transactions that committed late with an earlier timestamp; re-applying is
 harmless. A pulled row is skipped if the local row has unsent changes (push
 reconciles it via version check) or if the local version is already ≥ the
-server's.
+server's. Local-only derived columns (e.g. `transactions.search_text`) are
+recomputed from the pulled row via the registry's `derive` hook.
+
+## Receipts (files)
+
+Receipt **rows** (`attachments`) sync through the outbox like any other table.
+Files do not: the picked image/PDF is copied into the app's document directory
+and the row carries `local_uri` + `upload_status = 'pending'` (local-only
+columns). After a successful sync run, `services/receipts/uploader.ts` uploads
+pending files to the private `attachments` bucket at `<user_id>/<id>.<ext>`
+(single flight, `upsert`); failures stay queued and retry after the next sync.
+The transaction never depends on the upload. Viewing a receipt uses the local
+file when present, otherwise a 10-minute signed URL.
 
 ## Scheduling (`hooks/useSyncScheduler.ts`)
 
@@ -91,6 +104,7 @@ restores the session when the network returns.
 - Tombstones are kept indefinitely; add server-side purge (e.g. 90 days after
   `deleted_at`) and local purge of synced tombstones.
 - Conflict review UI.
-- Attachments upload pipeline (files are not in the row sync).
+- Storage objects of deleted receipts are only removed by account deletion;
+  add a cleanup job.
 - Realtime (push notifications of remote changes) is optional; polling triggers suffice for now.
 - Initial sync of large histories: consider a bulk snapshot endpoint.

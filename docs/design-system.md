@@ -97,3 +97,16 @@ selected swatches show a check mark and have names for screen readers.
 
 Motion: onboarding uses `slide_from_right` transitions and toasts animate;
 both become instant when the OS reduce-motion setting is on.
+
+## Phase 2 additions
+
+| Component | Notes |
+| --- | --- |
+| `OptionPicker` | Per-option `disabled` (e.g. archived accounts stay visible but unselectable) |
+| `MultiChoiceChips` | Multi-select chips with checkbox semantics (filters) |
+| `CategoryIcon`, `CategoryPickerField`, `CategoryForm` | Category glyph on accent color; searchable picker grouped by parent with frequently-used first |
+| `TransactionRow` | Memoised list row; one accessible button announcing merchant, category, account and signed amount; transfers read "A to B" |
+| `TransactionForm`, `TransferForm` | RHF + Zod; repository errors land on the matching field |
+| `SplitEditor` | Total / allocated / remaining in exact minor units; "fill remaining" per line |
+| `DateTimeField`, `AccountPickerField`, `TagInput`, `ReceiptField`, `RefundLinkField` | Form fields used by the transaction forms |
+| `CashFlowCard`, `TopCategoriesCard` | Home dashboard cards; say when base totals are incomplete (missing rates) |

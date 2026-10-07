@@ -134,6 +134,31 @@ function GatedStack() {
           name="accounts/[id]/edit"
           options={{ title: t('accounts.editTitle'), presentation: 'modal' }}
         />
+        <Stack.Screen
+          name="transactions/new"
+          options={{ title: t('transactions.newTitle.expense'), presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="transactions/[id]/index"
+          options={{ title: t('transactions.detailTitle') }}
+        />
+        <Stack.Screen
+          name="transactions/[id]/edit"
+          options={{ title: t('transactions.editTitle'), presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="transactions/filters"
+          options={{ title: t('filters.title'), presentation: 'modal' }}
+        />
+        <Stack.Screen name="categories/index" options={{ title: t('categories.title') }} />
+        <Stack.Screen
+          name="categories/new"
+          options={{ title: t('categories.new'), presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="categories/[id]/edit"
+          options={{ title: t('categories.editTitle'), presentation: 'modal' }}
+        />
         <Stack.Screen name="settings/regional" options={{ title: t('regional.title') }} />
         <Stack.Screen name="settings/privacy" options={{ title: t('privacy.title') }} />
         <Stack.Screen name="settings/about" options={{ title: t('about.title') }} />

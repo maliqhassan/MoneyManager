@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { type Href, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
@@ -61,6 +61,13 @@ export default function SettingsScreen() {
           title={t('more.accounts')}
           subtitle={t('more.accountsHint')}
           onPress={() => router.push('/accounts')}
+        />
+        <Divider inset={64} />
+        <ListItem
+          icon="pricetags-outline"
+          title={t('more.categories')}
+          subtitle={t('more.categoriesHint')}
+          onPress={() => router.push('/categories' as Href)}
         />
       </Card>
 

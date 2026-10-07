@@ -63,6 +63,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       'expo-sqlite',
       ['expo-secure-store', { configureAndroidBackup: true }],
       [
+        'expo-image-picker',
+        {
+          photosPermission: 'MoneyManager lets you attach receipt photos to your transactions.',
+          cameraPermission: 'MoneyManager uses the camera to photograph receipts.',
+          microphonePermission: false,
+        },
+      ],
+      [
         'expo-splash-screen',
         {
           image: './assets/splash-icon.png',

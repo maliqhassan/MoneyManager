@@ -171,3 +171,20 @@ The user's configured time zone (not the device clock's UTC date) decides
 so later changes of time zone never move past transactions between days. Bill
 due dates and recurrences are calendar dates, computed with pure calendar
 arithmetic (no UTC conversion).
+
+## Transactions (Phase 2)
+
+```
+TransactionForm (RHF + Zod, locale amount parsing)
+  └─► formSchema.toTransactionInput ─► useTransactionMutations
+        └─► SqliteTransactionRepository (one SQLite transaction)
+              rows + splits + tag links + outbox entries
+              base snapshot · merchant_key · search_text · occurred_at (zoned)
+```
+
+- Lists use `useInfiniteQuery` over keyset pages; filters live in a small
+  Zustand store (`features/transactions/filterStore.ts`) so the list and the
+  filter sheet share them.
+- Category suggestion (`useCategorySuggestion`) is deterministic and only fills
+  the field while the user has not picked a category.
+- Receipts: see [offline-sync.md](offline-sync.md#receipts-files).

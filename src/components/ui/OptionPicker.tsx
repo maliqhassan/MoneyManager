@@ -17,6 +17,8 @@ export interface PickerOption<V extends string> {
   leading?: ReactNode;
   /** Extra text matched by search but not shown. */
   keywords?: string;
+  /** Shown but not selectable (the description should say why). */
+  disabled?: boolean;
 }
 
 export interface OptionPickerProps<V extends string> {
@@ -146,7 +148,12 @@ export function OptionPicker<V extends string>({
             return (
               <Pressable
                 accessibilityRole="radio"
-                accessibilityState={{ selected: isSelected, checked: isSelected }}
+                accessibilityState={{
+                  selected: isSelected,
+                  checked: isSelected,
+                  disabled: !!item.disabled,
+                }}
+                disabled={item.disabled}
                 accessibilityLabel={
                   item.description ? `${item.label}, ${item.description}` : item.label
                 }
@@ -157,6 +164,7 @@ export function OptionPicker<V extends string>({
                 style={({ pressed }) => [
                   styles.option,
                   (pressed || isSelected) && { backgroundColor: theme.colors.surfaceMuted },
+                  item.disabled && { opacity: 0.55 },
                 ]}
               >
                 {item.leading ? <View style={styles.leading}>{item.leading}</View> : null}

@@ -20,7 +20,7 @@ import { useSyncStore } from '@/stores/syncStore';
 import { createSupabaseRemote } from '@/sync/supabaseRemote';
 import { SyncEngine } from '@/sync/SyncEngine';
 
-interface DataContextValue {
+export interface DataContextValue {
   db: SqlDatabase;
   repositories: Repositories;
   syncEngine: SyncEngine;
@@ -35,7 +35,8 @@ type OpenState =
   | { status: 'ready'; opened: OpenedDatabase }
   | { status: 'error'; error: unknown };
 
-const DataContext = createContext<DataContextValue | null>(null);
+/** Exported for tests (renderWithProviders); app code uses DataProvider. */
+export const DataContext = createContext<DataContextValue | null>(null);
 
 export function useData(): DataContextValue {
   const value = useContext(DataContext);

@@ -1,3 +1,7 @@
+import { buildTransactionSearchText } from '@/domain/text/search';
+
+const asText = (v: unknown): string | null => (typeof v === 'string' ? v : null);
+
 /**
  * Synced tables in dependency order (parents before children). Push follows
  * outbox FIFO order; pull walks this list so parents normally land first.
@@ -19,7 +23,15 @@ export const SYNC_TABLES = [
   { name: 'transfers', booleanColumns: [], jsonColumns: [] },
   { name: 'recurring_transactions', booleanColumns: ['auto_post', 'is_active'], jsonColumns: [] },
   { name: 'import_batches', booleanColumns: [], jsonColumns: ['column_mapping'] },
-  { name: 'transactions', booleanColumns: ['is_split'], jsonColumns: [] },
+  {
+    name: 'transactions',
+    booleanColumns: ['is_split'],
+    jsonColumns: [],
+    localOnlyColumns: ['search_text'],
+    derive: (row) => ({
+      search_text: buildTransactionSearchText(asText(row.payee), asText(row.notes)),
+    }),
+  },
   { name: 'transaction_splits', booleanColumns: [], jsonColumns: [] },
   { name: 'transaction_tags', booleanColumns: [], jsonColumns: [] },
   { name: 'category_rules', booleanColumns: ['is_enabled'], jsonColumns: [] },
@@ -48,6 +60,8 @@ export interface SyncTableConfig {
   booleanColumns: readonly string[];
   jsonColumns: readonly string[];
   localOnlyColumns?: readonly string[];
+  /** Computes local-only columns from a pulled server row. */
+  derive?: (remote: Readonly<Record<string, unknown>>) => Record<string, string | number | null>;
 }
 
 export type SyncTableName = (typeof SYNC_TABLES)[number]['name'];
