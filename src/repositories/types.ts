@@ -4,17 +4,32 @@ import type { Money } from '@/domain/money/money';
 import type {
   Account,
   Attachment,
+  Bill,
+  BillPayment,
   Budget,
-  BudgetAllocation,
+  BudgetRevision,
   Category,
   CategoryRule,
   IsoDate,
+  GoalContribution,
+  SavingsGoal,
   Tag,
   Transaction,
   TransactionSplit,
   UserPreferences,
   Uuid,
 } from '@/domain/models';
+import type { BudgetEvaluation } from '@/domain/planning/budgets';
+import type { GoalProgress } from '@/domain/planning/goals';
+import type { PeriodicCost } from '@/domain/planning/recurrence';
+import type {
+  BillInput,
+  BillLinkInput,
+  BillPaymentInput,
+  BudgetInput,
+  ContributionInput,
+  GoalInput,
+} from '@/validation/planning';
 import type {
   AccountInput,
   AccountUpdate,
@@ -235,9 +250,158 @@ export interface AttachmentRepository {
   markUploadFailed(id: Uuid): Promise<void>;
 }
 
+// ---------------------------------------------------------------- planning
+
+export interface BudgetListItem {
+  budget: Budget;
+  category: Category | null;
+  evaluation: BudgetEvaluation;
+  /** Currencies whose spending could not be converted (no known rate). */
+  missingRates: CurrencyCode[];
+}
+
+export interface BudgetSpendingLine {
+  transactionId: Uuid;
+  type: 'expense' | 'refund';
+  payee: string | null;
+  localDate: IsoDate;
+  accountName: string;
+  categoryId: Uuid | null;
+  categoryName: string | null;
+  categorySystemKey: string | null;
+  /** Signed contribution (split line or whole transaction) in `currency`. */
+  amountMinor: number;
+  currency: CurrencyCode;
+  isSplitLine: boolean;
+}
+
 export interface BudgetRepository {
   list(options?: { includeArchived?: boolean }): Promise<Budget[]>;
-  getById(id: Uuid): Promise<(Budget & { allocations: BudgetAllocation[] }) | null>;
+  getById(id: Uuid): Promise<Budget | null>;
+  revisions(budgetId: Uuid): Promise<BudgetRevision[]>;
+  /** Budgets with their evaluated periods as of `today` (user's local date). */
+  overviews(today: IsoDate, options?: { archived?: boolean }): Promise<BudgetListItem[]>;
+  overview(id: Uuid, today: IsoDate): Promise<BudgetListItem | null>;
+  /** Transactions and split lines counted by the budget within [from, to]. */
+  spendingLines(id: Uuid, from: IsoDate, to: IsoDate): Promise<BudgetSpendingLine[]>;
+  create(input: BudgetInput): Promise<Budget>;
+  /** Amount/rollover changes apply from the current period; past periods keep theirs. */
+  update(id: Uuid, input: BudgetInput, today: IsoDate): Promise<void>;
+  setArchived(id: Uuid, archived: boolean): Promise<void>;
+  /** Whether scope/period/currency can still change (no completed period yet). */
+  hasHistory(id: Uuid, today: IsoDate): Promise<boolean>;
+}
+
+export interface BillListItem {
+  bill: Bill;
+  accountName: string | null;
+  categoryName: string | null;
+  categorySystemKey: string | null;
+  categoryIcon: string | null;
+  categoryColor: string | null;
+}
+
+export interface BillPaymentDetail extends BillPayment {
+  /** The paying transaction as it is now (null for skipped/linked-but-missing). */
+  transaction: {
+    id: Uuid;
+    amountMinor: number;
+    currency: CurrencyCode;
+    localDate: IsoDate;
+    accountName: string;
+  } | null;
+}
+
+export interface PaidBillItem {
+  payment: BillPaymentDetail;
+  billName: string;
+  isSubscription: boolean;
+}
+
+export interface SubscriptionSummary {
+  count: number;
+  perCurrency: {
+    currency: CurrencyCode;
+    monthly: PeriodicCost;
+    yearly: PeriodicCost;
+  }[];
+  /** All subscriptions in the base currency; null when a rate is missing. */
+  base: { currency: CurrencyCode; monthly: PeriodicCost; yearly: PeriodicCost } | null;
+  missingRates: CurrencyCode[];
+}
+
+export type BillKind = 'bill' | 'subscription';
+
+export interface BillRepository {
+  /** Active (or archived) bills sorted by next due date. */
+  list(options: { kind?: BillKind; archived?: boolean }): Promise<BillListItem[]>;
+  /** Active bills due on or before `through` (includes overdue). */
+  upcoming(
+    through: IsoDate,
+    options?: { kind?: BillKind; limit?: number },
+  ): Promise<BillListItem[]>;
+  getById(id: Uuid): Promise<(BillListItem & { payments: BillPaymentDetail[] }) | null>;
+  recentPayments(options: { kind?: BillKind; limit: number }): Promise<PaidBillItem[]>;
+  create(input: BillInput): Promise<Bill>;
+  update(id: Uuid, input: BillInput): Promise<void>;
+  setArchived(id: Uuid, archived: boolean): Promise<void>;
+  /** Records the payment as a normal expense transaction. Returns its id. */
+  markPaid(billId: Uuid, input: BillPaymentInput): Promise<Uuid>;
+  /** Marks a due date paid by an existing expense transaction. */
+  linkPayment(billId: Uuid, input: BillLinkInput): Promise<void>;
+  skip(billId: Uuid, dueDate: IsoDate): Promise<void>;
+  /** Removes a payment/skip record; the due date becomes unpaid again. The transaction is kept. */
+  undoPayment(paymentId: Uuid): Promise<void>;
+  subscriptionSummary(today: IsoDate, baseCurrency: CurrencyCode): Promise<SubscriptionSummary>;
+}
+
+export interface GoalListItem {
+  goal: SavingsGoal;
+  progress: GoalProgress;
+  /** Contributions in other currencies without a known rate (excluded from saved). */
+  missingRates: CurrencyCode[];
+}
+
+export interface ContributionDetail extends GoalContribution {
+  accountName: string | null;
+  transfer: {
+    id: Uuid;
+    fromAccountName: string;
+    toAccountName: string;
+    amountMinor: number;
+    currency: CurrencyCode;
+    localDate: IsoDate;
+  } | null;
+}
+
+export interface TransferCandidate {
+  id: Uuid;
+  localDate: IsoDate;
+  fromAccountName: string;
+  toAccountName: string;
+  amountMinor: number;
+  currency: CurrencyCode;
+}
+
+export type GoalFilter = 'active' | 'completed' | 'archived';
+
+export interface GoalRepository {
+  list(filter: GoalFilter, today: IsoDate): Promise<GoalListItem[]>;
+  getById(
+    id: Uuid,
+    today: IsoDate,
+  ): Promise<
+    (GoalListItem & { accountName: string | null; contributions: ContributionDetail[] }) | null
+  >;
+  create(input: GoalInput): Promise<SavingsGoal>;
+  update(id: Uuid, input: GoalInput): Promise<void>;
+  setArchived(id: Uuid, archived: boolean): Promise<void>;
+  addContribution(goalId: Uuid, input: ContributionInput): Promise<Uuid>;
+  updateContribution(id: Uuid, input: ContributionInput): Promise<void>;
+  /** Removes the contribution only; a linked transfer stays (money did move). */
+  removeContribution(id: Uuid): Promise<void>;
+  /** Recent transfers not yet linked to a contribution. */
+  transferCandidates(limit: number): Promise<TransferCandidate[]>;
 }
 
 export interface Repositories {
@@ -249,6 +413,9 @@ export interface Repositories {
   tags: TagRepository;
   transactions: TransactionRepository;
   attachments: AttachmentRepository;
+  budgets: BudgetRepository;
+  bills: BillRepository;
+  goals: GoalRepository;
 }
 
 export type LocalChangeListener = (table: string) => void;

@@ -202,6 +202,8 @@ export interface CategoryRule extends SyncedEntity {
 
 export interface Budget extends SyncedEntity {
   name: string;
+  /** Expense category (incl. its subcategories); null = overall budget (all spending). */
+  categoryId: Uuid | null;
   periodType: BudgetPeriodType;
   /** Anchor date; for custom budgets the first day of the only period. */
   startDate: IsoDate;
@@ -212,6 +214,14 @@ export interface Budget extends SyncedEntity {
   amountMinor: number | null;
   rolloverEnabled: boolean;
   isArchived: boolean;
+}
+
+/** Amount + rollover in force from a period start (history is never rewritten). */
+export interface BudgetRevision extends SyncedEntity {
+  budgetId: Uuid;
+  effectiveFrom: IsoDate;
+  amountMinor: number;
+  rolloverEnabled: boolean;
 }
 
 export interface BudgetAllocation extends SyncedEntity {
@@ -249,7 +259,13 @@ export interface Bill extends SyncedEntity {
   isSubscription: boolean;
   frequency: RecurrenceFrequency;
   interval: number;
+  /** First due date; occurrences are computed from it (month-end safe). */
+  anchorDate: IsoDate;
+  /** Earliest occurrence not yet paid or skipped. */
   nextDueDate: IsoDate;
+  endDate: IsoDate | null;
+  /** Informational: paid automatically by the provider. Never creates transactions. */
+  autopay: boolean;
   reminderDaysBefore: number | null;
   recurringTransactionId: Uuid | null;
   notes: string | null;
@@ -278,9 +294,14 @@ export interface SavingsGoal extends SyncedEntity {
 
 export interface GoalContribution extends SyncedEntity {
   goalId: Uuid;
-  /** Positive = contribution, negative = withdrawal, in the goal currency. */
+  /** Positive = contribution, negative = withdrawal, in `currency`. */
   amountMinor: number;
+  /** Usually the goal currency; converted with known rates when it differs. */
+  currency: CurrencyCode;
   contributedOn: IsoDate;
+  accountId: Uuid | null;
+  /** Transfer that actually moved the money, if any (never double-counted). */
+  transferId: Uuid | null;
   transactionId: Uuid | null;
   notes: string | null;
 }

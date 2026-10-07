@@ -159,6 +159,42 @@ function GatedStack() {
           name="categories/[id]/edit"
           options={{ title: t('categories.editTitle'), presentation: 'modal' }}
         />
+        <Stack.Screen
+          name="budgets/new"
+          options={{ title: t('budgets.new'), presentation: 'modal' }}
+        />
+        <Stack.Screen name="budgets/[id]/index" options={{ title: t('budgets.detailTitle') }} />
+        <Stack.Screen
+          name="budgets/[id]/edit"
+          options={{ title: t('budgets.editTitle'), presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="budgets/[id]/transactions"
+          options={{ title: t('budgets.detail.transactionsTitle') }}
+        />
+        <Stack.Screen
+          name="bills/new"
+          options={{ title: t('bills.newBill'), presentation: 'modal' }}
+        />
+        <Stack.Screen name="bills/[id]/index" options={{ title: t('bills.detailTitle') }} />
+        <Stack.Screen
+          name="bills/[id]/edit"
+          options={{ title: t('bills.editBill'), presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="bills/[id]/pay"
+          options={{ title: t('bills.pay.title'), presentation: 'modal' }}
+        />
+        <Stack.Screen name="goals/new" options={{ title: t('goals.new'), presentation: 'modal' }} />
+        <Stack.Screen name="goals/[id]/index" options={{ title: t('goals.detailTitle') }} />
+        <Stack.Screen
+          name="goals/[id]/edit"
+          options={{ title: t('goals.editTitle'), presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="goals/[id]/contribute"
+          options={{ title: t('goals.contribution.add'), presentation: 'modal' }}
+        />
         <Stack.Screen name="settings/regional" options={{ title: t('regional.title') }} />
         <Stack.Screen name="settings/privacy" options={{ title: t('privacy.title') }} />
         <Stack.Screen name="settings/about" options={{ title: t('about.title') }} />

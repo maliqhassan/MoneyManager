@@ -53,43 +53,60 @@ SecureStore sessions, account deletion Edge Function, documentation.
 Deferred: undo after delete (confirmation dialog instead); removing storage
 objects for deleted receipts before account deletion.
 
-## Phase 3 — Multi-currency rates (next)
+## Phase 3 — Budgets, bills/subscriptions & savings goals ✅
+
+- Budgets: overall or one expense category (including subcategories);
+  weekly (user's first day of week), monthly (user's month start day) or
+  custom dates; explicit currency; spending derived from transactions
+  (refunds reduce it; transfers, card payments and income never count; split
+  lines count toward their own category). Linear pace, deterministic status
+  (on track / watch spending / over), optional rollover of unspent money.
+  Amount and rollover are stored as revisions with an effective date, so
+  completed periods keep their numbers. Archive/restore, duplicate
+  prevention, transaction drill-down, category breakdown, period history.
+- Bills & subscriptions: weekly / every 2 weeks / monthly / quarterly / yearly
+  / custom interval; month-end safe (31 Jan → 28/29 Feb → 31 Mar); upcoming,
+  overdue, paid, archived. "Mark as paid" records a normal expense (or links
+  an existing one) in the same write as the payment record; deleting that
+  transaction makes the due date unpaid again. Skip and undo. Monthly and
+  yearly subscription costs (exact or marked approximate).
+- Reminders: stored per bill and shown in the UI. Device notifications are
+  NOT implemented yet (`expo-notifications` is not installed).
+- Savings goals: target, currency, optional target date and account, icon and
+  colour; contributions (add/edit/remove) in any currency, converted with
+  known rates only; optional transfer recorded or linked with the
+  contribution (balances move only through the transfer); progress,
+  completion, overfunding, suggested monthly amount.
+- Home: budgets closest to their limit, upcoming commitments (14 days),
+  goals, and savings rate as a labelled metric.
+- Migration 4 (Supabase + local): `budgets.category_id`, `budget_revisions`,
+  `bills.anchor_date/end_date/autopay`, contribution currency/account/transfer,
+  integrity triggers (budget category kind, bill currency = account currency).
+
+## Next — Multi-currency rates
 
 - `exchange-rates` Edge Function (scheduled) populating `exchange_rates`.
-- Local rate cache + lookup; base-currency snapshots on entry; manual rate override.
-- Totals across currencies on Home.
+- Manual rate override; totals across currencies on Home.
+- Until then, conversions use whatever rates are in the local cache and
+  anything without a rate is reported as incomplete.
 
-## Phase 4 — Budgets
+## Later — Notifications
 
-- Monthly / weekly / custom, overall + category allocations, rollover,
-  progress, overspending alerts, forecast (domain logic already done).
+- `expo-notifications`: bill reminders from the stored reminder settings
+  (time-zone aware, no duplicates, cancelled on archive, rescheduled on
+  change), budget threshold alerts.
 
-## Phase 5 — Bills, subscriptions & notifications
-
-- Recurring transactions engine, bills & payments, reminders with
-  `expo-notifications` (install at this phase).
-
-## Phase 6 — Goals
-
-- Savings goals, contributions, suggested monthly contribution.
-
-## Phase 7 — Reports & dashboard
+## Later — Reports & dashboard
 
 - Choose and add a chart library (evaluate `victory-native` vs
   `react-native-gifted-charts` against SDK 57 at that time).
-- Income vs expenses, by category/merchant, trends, cash flow, savings rate,
-  budget vs actual, balance history, period comparison, custom ranges.
-- Full Home dashboard with progressive disclosure.
+- Income vs expenses, by category/merchant, trends, cash flow, budget vs
+  actual, balance history, period comparison, custom ranges.
 
-## Phase 8 — CSV import
+## Later — CSV import
 
 - `expo-document-picker`, column detection/mapping, preview, duplicate
   detection (`import_hash`), auto-categorisation, uncategorised review.
-
-## Phase 9 — Attachments
-
-- Receipt capture/upload to the private bucket with type/size validation,
-  offline upload queue.
 
 ## Cross-cutting backlog
 

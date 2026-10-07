@@ -71,6 +71,20 @@ reconciles it via version check) or if the local version is already ≥ the
 server's. Local-only derived columns (e.g. `transactions.search_text`) are
 recomputed from the pulled row via the registry's `derive` hook.
 
+## Planning writes
+
+Budgets (+ revision), bills, bill payments and goal contributions use the same
+outbox. Paying a bill queues `transactions` (+ splits) → `bill_payments` →
+`bills`; a contribution with a transfer queues `transfers` → two
+`transactions` → `goal_contributions`, so the server always receives the
+referenced row first. Queries that are derived from other tables are
+invalidated through `providers/queryDependencies.ts` (e.g. a new expense
+refreshes budgets, bills and goals).
+
+Known edge: two devices paying the same bill due date offline both create an
+expense; the second payment row is rejected by the server's unique
+(bill, due date) index and parked as failed (visible in Settings → Sync).
+
 ## Receipts (files)
 
 Receipt **rows** (`attachments`) sync through the outbox like any other table.

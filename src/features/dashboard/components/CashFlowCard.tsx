@@ -3,7 +3,7 @@ import { View } from 'react-native';
 
 import { Card, Divider, Icon, MoneyText, Text } from '@/components/ui';
 import type { CurrencyCode } from '@/domain/currency/currencies';
-import type { CashFlowSummary } from '@/domain/finance/cashflow';
+import { type CashFlowSummary, savingsRateBasisPoints } from '@/domain/finance/cashflow';
 import { useFormatter } from '@/i18n/FormatContext';
 import { makeStyles } from '@/theme';
 
@@ -57,6 +57,20 @@ export function CashFlowCard({
                 variant="bodyStrong"
               />
             </View>
+            <View style={styles.row}>
+              <Text variant="bodySmall" tone="textSecondary">
+                {t('home.savingsRate')}
+              </Text>
+              <Text variant="bodySmall" tone="textSecondary">
+                {(() => {
+                  const rate = savingsRateBasisPoints(summary);
+                  return rate === null ? t('home.savingsRateNone') : formatter.percent(rate, 0);
+                })()}
+              </Text>
+            </View>
+            <Text variant="caption" tone="textMuted">
+              {t('planning.metricNote')}
+            </Text>
           </>
         ) : (
           <View style={styles.notice}>

@@ -118,6 +118,10 @@ deterministic regardless of where the user travels later.
 | `merchants/normalize.ts` | Merchant key ("WALMART #1234", "Wal-Mart" → `walmart`) |
 | `categorization/suggest.ts` | Deterministic category suggestion: rules by priority, then the merchant's last category |
 | `text/search.ts` | Locale-safe search normalisation (case, diacritics, ß) and LIKE escaping |
+| `planning/budgets.ts` | Budget periods, revisions, rollover chain, linear pace and status |
+| `planning/recurrence.ts` | Bill/subscription schedules from an anchor (month-end safe), monthly/yearly cost (exact or flagged approximate) |
+| `planning/bills.ts` | Due status (overdue / due today / upcoming) in local days, next due date after payment |
+| `planning/goals.ts` | Goal progress, overfunding, suggested monthly contribution |
 
 ## Storage
 
@@ -140,9 +144,12 @@ folder, deletes the auth user. All tables cascade from `auth.users`.
   deletion cascade. Phase 2 extended it (category tree seed + backfill of
   existing users, idempotent re-seed, integrity triggers, RLS for splits, tags,
   rules and attachments).
-- `rls.test.sql` itself (33 assertions) was executed on embedded Postgres with
-  a minimal pgTAP shim and Supabase auth/storage stubs; it has not yet been run
-  against a real Supabase stack.
+- `rls.test.sql` itself (50 assertions, incl. Phase 3 planning tables) was
+  executed on embedded Postgres with a minimal pgTAP shim and Supabase
+  auth/storage stubs; it has not yet been run against a real Supabase stack.
+- The Phase 3 migration was also applied on top of a Phase 2 database with
+  existing bills, budgets and contributions (backfills checked, no version
+  bumps).
 
 ## Migrations
 
@@ -151,6 +158,7 @@ folder, deletes the auth user. All tables cascade from `auth.users`.
 | 1 | `20261007120000_initial_schema.sql` | `001_initial.ts` | Core schema, RLS, triggers, storage |
 | 2 | `20261008090000_regional_preferences.sql` | `002_regional_preferences.ts` | `region`, `language`, `date_format`, `number_format`, `onboarding_completed_at`; locale/time-zone format checks |
 | 3 | `20261009090000_transactions_categories.sql` | `003_transactions.ts` | `transactions.merchant_key`; local-only `search_text`; list/filter indexes; default category tree (`app.default_categories`, `app.seed_default_categories`, backfill); triggers for category parents, transaction currency and account-currency lock |
+| 4 | `20261010090000_budgets_bills_goals.sql` | `004_planning.ts` | `budgets.category_id`; `budget_revisions` (amount + rollover from an effective date); `bills.anchor_date`, `end_date`, `autopay`; `goal_contributions.currency`, `account_id`, `transfer_id`; triggers for budget category kind and bill currency; backfills without version bumps |
 
 Deploy order: **apply the Supabase migration before shipping an app build that
 uses it** — the app pushes the new columns, and PostgREST rejects unknown
@@ -206,3 +214,42 @@ columns (such pushes are retried, then parked as failed).
   allocation or rule uses the category and it has no subcategories.
 - Search uses the local-only `search_text` column (normalised merchant + notes,
   derived again on pull) plus category and tag names.
+
+## Budgets, bills & goals: rules
+
+- **Budget scope**: one expense category including its subcategories, or all
+  spending (`category_id` NULL). One active budget per scope, period type and
+  currency (custom budgets: per exact date range); budgets with different
+  scopes may overlap and each counts its own spending.
+- **Budget spending** is derived from transactions: expenses add, refunds
+  subtract; income, transfers and credit-card payments (transfers) never
+  count. Split transactions contribute their split lines. Other currencies use
+  the transaction's base snapshot when it is in the budget currency, else a
+  known rate on the transaction date; with no rate the amount is excluded and
+  the result marked incomplete.
+- **Periods** use the user's first day of week and month start day; dates are
+  local calendar dates (`local_date`), so time zones and DST never move a
+  transaction between periods. Recurring budgets start on a period boundary.
+- **Revisions**: amount and rollover are stored per effective date. Once a
+  period has completed, scope/period/currency are locked and edits apply from
+  the current period; past periods are reproducible. A budget pulled before
+  its revisions uses its own amount until they arrive.
+- **Rollover**: `carryOut = rollover ? max(0, available − spent) : 0`;
+  overspending is absorbed, never carried as a negative.
+- **Status**: over if spent > available; warning if ≥ 80% used or more than
+  10% of the budget ahead of a linear pace; otherwise on track. A measurement,
+  not advice.
+- **Bills** are expected commitments, never transactions. Occurrences are
+  computed from `anchor_date` (31st → last day of shorter months). Paying
+  records a normal expense + `bill_payments` row in one write (transaction
+  queued first) and advances `next_due_date` past already-settled dates.
+  Deleting the paying transaction removes the payment and reopens that due
+  date. A bill whose schedule ends becomes inactive after its last payment.
+  A bill with an account must use the account's currency.
+- **Reminders** (`reminder_days_before`) are stored only; no device
+  notifications are scheduled yet.
+- **Goals**: a contribution records money set aside (any currency, converted
+  with known rates). It never changes a balance; a transfer recorded with it
+  (or linked later) does. Removing a contribution keeps its transfer. Goal
+  currency is fixed once contributions exist. Completion is derived
+  (saved ≥ target); overfunding is shown, not capped.

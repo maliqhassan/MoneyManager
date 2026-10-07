@@ -23,6 +23,8 @@ export interface CategoryPickerFieldProps {
   error?: string | null;
   /** Placeholder when nothing is selected. */
   placeholder?: string;
+  /** Read-only (e.g. a budget whose periods have completed). */
+  disabled?: boolean;
 }
 
 /**
@@ -36,6 +38,7 @@ export function CategoryPickerField({
   onChange,
   error,
   placeholder,
+  disabled = false,
 }: CategoryPickerFieldProps) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -106,13 +109,15 @@ export function CategoryPickerField({
         accessibilityRole="button"
         accessibilityLabel={`${label}: ${shown}`}
         accessibilityHint={error ?? undefined}
+        accessibilityState={{ disabled }}
+        disabled={disabled}
         onPress={() => setOpen(true)}
         style={({ pressed }) => [
           styles.field,
           {
             borderColor: error ? theme.colors.negative : theme.colors.borderStrong,
             borderWidth: error ? 2 : 1,
-            backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surface,
+            backgroundColor: pressed || disabled ? theme.colors.surfaceMuted : theme.colors.surface,
           },
         ]}
       >

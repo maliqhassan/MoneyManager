@@ -18,6 +18,7 @@ import { logger } from '@/services/monitoring/logger';
 import { getSupabase } from '@/services/supabase/client';
 import { useSyncStore } from '@/stores/syncStore';
 import { createSupabaseRemote } from '@/sync/supabaseRemote';
+import { queryRootsFor } from './queryDependencies';
 import { SyncEngine } from '@/sync/SyncEngine';
 
 export interface DataContextValue {
@@ -86,7 +87,9 @@ export function DataProvider({ userId, children }: PropsWithChildren<{ userId: s
 
   const notifyChange = useCallback(
     (table: string) => {
-      void queryClient.invalidateQueries({ queryKey: [table] });
+      for (const root of queryRootsFor(table)) {
+        void queryClient.invalidateQueries({ queryKey: [root] });
+      }
       for (const listener of changeListeners) listener();
     },
     [queryClient, changeListeners],

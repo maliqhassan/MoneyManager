@@ -40,9 +40,19 @@ export interface DateTimeFieldProps {
   time: string;
   onChange: (next: { date: string; time: string }) => void;
   showTime?: boolean;
+  /** Field label (defaults to "Date" / "Date · Time"). */
+  label?: string;
+  disabled?: boolean;
 }
 
-export function DateTimeField({ date, time, onChange, showTime = true }: DateTimeFieldProps) {
+export function DateTimeField({
+  date,
+  time,
+  onChange,
+  showTime = true,
+  label,
+  disabled = false,
+}: DateTimeFieldProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = useStyles();
@@ -76,10 +86,12 @@ export function DateTimeField({ date, time, onChange, showTime = true }: DateTim
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${label}: ${value}`}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={() => open(mode)}
       style={({ pressed }) => [
         styles.field,
-        pressed && { backgroundColor: theme.colors.surfaceMuted },
+        (pressed || disabled) && { backgroundColor: theme.colors.surfaceMuted },
       ]}
     >
       <Icon name={icon} size={18} tone="textSecondary" />
@@ -92,15 +104,16 @@ export function DateTimeField({ date, time, onChange, showTime = true }: DateTim
   return (
     <View style={styles.container}>
       <Text variant="label" tone="textSecondary">
-        {showTime
-          ? `${t('transactions.fields.date')} · ${t('transactions.fields.time')}`
-          : t('transactions.fields.date')}
+        {label ??
+          (showTime
+            ? `${t('transactions.fields.date')} · ${t('transactions.fields.time')}`
+            : t('transactions.fields.date'))}
       </Text>
       <View style={styles.row}>
         <View style={styles.dateCell}>
           {field(
             'date',
-            t('transactions.fields.date'),
+            label ?? t('transactions.fields.date'),
             formatter.date(date, 'medium'),
             'calendar-outline',
           )}

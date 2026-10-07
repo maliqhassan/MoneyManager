@@ -13,7 +13,7 @@ import { toBool } from './shared';
 
 /** Row → model mappers for Phase 2 tables (snake_case SQLite → camelCase domain). */
 
-interface SyncedRow {
+export interface SyncedRow {
   id: string;
   user_id: string;
   created_at: string;
@@ -22,7 +22,7 @@ interface SyncedRow {
   version: number;
 }
 
-const synced = (r: SyncedRow) => ({
+export const synced = (r: SyncedRow) => ({
   id: r.id,
   userId: r.user_id,
   createdAt: r.created_at,

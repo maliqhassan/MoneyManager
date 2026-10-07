@@ -36,10 +36,11 @@ export const SYNC_TABLES = [
   { name: 'transaction_tags', booleanColumns: [], jsonColumns: [] },
   { name: 'category_rules', booleanColumns: ['is_enabled'], jsonColumns: [] },
   { name: 'budgets', booleanColumns: ['rollover_enabled', 'is_archived'], jsonColumns: [] },
+  { name: 'budget_revisions', booleanColumns: ['rollover_enabled'], jsonColumns: [] },
   { name: 'budget_allocations', booleanColumns: ['rollover_enabled'], jsonColumns: [] },
   {
     name: 'bills',
-    booleanColumns: ['is_variable_amount', 'is_subscription', 'is_active'],
+    booleanColumns: ['is_variable_amount', 'is_subscription', 'is_active', 'autopay'],
     jsonColumns: [],
   },
   { name: 'bill_payments', booleanColumns: [], jsonColumns: [] },

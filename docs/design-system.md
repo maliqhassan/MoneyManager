@@ -110,3 +110,18 @@ both become instant when the OS reduce-motion setting is on.
 | `SplitEditor` | Total / allocated / remaining in exact minor units; "fill remaining" per line |
 | `DateTimeField`, `AccountPickerField`, `TagInput`, `ReceiptField`, `RefundLinkField` | Form fields used by the transaction forms |
 | `CashFlowCard`, `TopCategoriesCard` | Home dashboard cards; say when base totals are incomplete (missing rates) |
+
+## Phase 3 additions
+
+| Component | Notes |
+| --- | --- |
+| `BudgetCard` | Spent of available, progress bar coloured by status *and* a written status badge, remaining/over, incomplete-rate notice |
+| `BillRow` | Due label in local days ("Due in 3 days", "Overdue by 2 days"), "≈" for variable amounts, autopay badge |
+| `SubscriptionSummaryCard` | Monthly/yearly cost; approximate values marked "≈" and explained |
+| `GoalCard` | Saved of target; progress above 100% shown as text (bar is full) |
+| `BudgetForm`, `BillForm`, `PayBillForm`, `GoalForm`, `ContributionForm` | RHF + Zod; repository errors mapped to fields; locked fields explained |
+| `HomeBudgets`, `HomeUpcomingBills`, `HomeGoals` | Compact Home sections with one-line empty states |
+| `CategoryPickerField`, `DateTimeField` | Gained `disabled`; `DateTimeField` gained `label` (date-only use) |
+
+The Budgets tab is the planning hub: chips switch between Budgets, Bills,
+Subscriptions and Goals (deep-linkable with `/budgets?section=bills`).

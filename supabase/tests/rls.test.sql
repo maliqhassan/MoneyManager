@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(33);
+select plan(50);
 
 -- Two users; the sign-up trigger seeds profiles, preferences and categories.
 insert into auth.users (id, email, raw_user_meta_data, aud, role)
@@ -133,6 +133,43 @@ select throws_ok($$
   values ('ffffffff-0000-4000-8000-000000000005', '11111111-1111-4111-8111-111111111111', 'cccccccc-0000-4000-8000-000000000002', '22222222-2222-4222-8222-222222222222/r.jpg', 'image/jpeg', 1000, 'r.jpg')
 $$, '23514', null, 'attachment paths must live in the owner''s folder');
 
+-- ---- Phase 3 planning (user A) ----
+select lives_ok($$
+  insert into public.budgets (id, user_id, name, category_id, period_type, start_date, currency, amount_minor, rollover_enabled)
+  values ('bbbbbbbb-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111', 'Pets', 'dddddddd-0000-4000-8000-0000000000c1', 'monthly', '2026-10-01', 'USD', 50000, true);
+  insert into public.budget_revisions (id, user_id, budget_id, effective_from, amount_minor, rollover_enabled)
+  values ('bbbbbbbb-0000-4000-8000-000000000011', '11111111-1111-4111-8111-111111111111', 'bbbbbbbb-0000-4000-8000-000000000001', '2026-10-01', 50000, true);
+  insert into public.bills (id, user_id, name, account_id, category_id, amount_minor, currency, is_subscription,
+    frequency, interval, anchor_date, next_due_date, reminder_days_before)
+  values ('bbbbbbbb-0000-4000-8000-000000000002', '11111111-1111-4111-8111-111111111111', 'Streaming', 'aaaaaaaa-0000-4000-8000-000000000001', 'dddddddd-0000-4000-8000-0000000000c1', 1599, 'USD', true, 'monthly', 1, '2026-10-31', '2026-10-31', 3);
+  insert into public.bill_payments (id, user_id, bill_id, due_date, status, amount_minor, transaction_id)
+  values ('bbbbbbbb-0000-4000-8000-000000000012', '11111111-1111-4111-8111-111111111111', 'bbbbbbbb-0000-4000-8000-000000000002', '2026-10-31', 'paid', 500, 'cccccccc-0000-4000-8000-000000000002');
+  insert into public.savings_goals (id, user_id, name, target_amount_minor, currency)
+  values ('bbbbbbbb-0000-4000-8000-000000000003', '11111111-1111-4111-8111-111111111111', 'Vacation', 300000, 'USD');
+  insert into public.goal_contributions (id, user_id, goal_id, amount_minor, currency, contributed_on, account_id)
+  values ('bbbbbbbb-0000-4000-8000-000000000013', '11111111-1111-4111-8111-111111111111', 'bbbbbbbb-0000-4000-8000-000000000003', 50000, 'USD', '2026-10-08', 'aaaaaaaa-0000-4000-8000-000000000001')
+$$, 'user can create budgets, revisions, bills, payments, goals and contributions');
+
+select throws_ok($$
+  insert into public.budgets (id, user_id, name, category_id, period_type, start_date, currency, amount_minor)
+  select 'bbbbbbbb-0000-4000-8000-000000000021', user_id, 'Salary?', id, 'monthly', '2026-10-01', 'USD', 1
+  from public.categories where system_key = 'salary'
+$$, '23514', null, 'budgets can only target expense categories');
+
+select throws_ok($$
+  insert into public.bills (id, user_id, name, account_id, amount_minor, currency, frequency, interval, anchor_date, next_due_date)
+  values ('bbbbbbbb-0000-4000-8000-000000000022', '11111111-1111-4111-8111-111111111111', 'Wrong', 'aaaaaaaa-0000-4000-8000-000000000001', 1, 'EUR', 'monthly', 1, '2026-10-01', '2026-10-01')
+$$, '23514', null, 'bill currency must match its account');
+
+select throws_ok($$
+  insert into public.bills (id, user_id, name, amount_minor, currency, frequency, interval, anchor_date, next_due_date, end_date)
+  values ('bbbbbbbb-0000-4000-8000-000000000023', '11111111-1111-4111-8111-111111111111', 'Bad end', 1, 'EUR', 'monthly', 1, '2026-10-01', '2026-10-01', '2026-09-01')
+$$, '23514', null, 'bill end date cannot precede its anchor');
+
+select throws_ok($$
+  delete from public.budgets where id = 'bbbbbbbb-0000-4000-8000-000000000001'
+$$, '42501', null, 'clients cannot hard-delete budgets');
+
 -- ---- as user B ----
 select set_config('request.jwt.claim.sub', '22222222-2222-4222-8222-222222222222', true);
 
@@ -173,6 +210,40 @@ $$, '23503', null, 'user cannot use another user''s category');
 select throws_ok($$
   insert into storage.objects (bucket_id, name) values ('attachments', '11111111-1111-4111-8111-111111111111/evil.jpg')
 $$, '42501', null, 'user cannot upload into another user''s receipt folder');
+
+select is_empty($$ select id from public.budgets $$, 'user cannot read another user''s budgets');
+select is_empty($$ select id from public.budget_revisions $$, 'user cannot read another user''s budget revisions');
+select is_empty($$ select id from public.bills $$, 'user cannot read another user''s bills or subscriptions');
+select is_empty($$ select id from public.bill_payments $$, 'user cannot read another user''s bill payments');
+select is_empty($$ select id from public.savings_goals $$, 'user cannot read another user''s goals');
+select is_empty($$ select id from public.goal_contributions $$, 'user cannot read another user''s contributions');
+
+select is_empty($$
+  update public.budgets set amount_minor = 1 where id = 'bbbbbbbb-0000-4000-8000-000000000001' returning id
+$$, 'user cannot change another user''s budget');
+select is_empty($$
+  update public.bills set reminder_days_before = 0 where id = 'bbbbbbbb-0000-4000-8000-000000000002' returning id
+$$, 'user cannot change another user''s reminders');
+
+select throws_ok($$
+  insert into public.budget_revisions (id, user_id, budget_id, effective_from, amount_minor)
+  values ('bbbbbbbb-0000-4000-8000-000000000031', '22222222-2222-4222-8222-222222222222', 'bbbbbbbb-0000-4000-8000-000000000001', '2026-11-01', 1)
+$$, '23503', null, 'user cannot add a revision to another user''s budget');
+
+select throws_ok($$
+  insert into public.bill_payments (id, user_id, bill_id, due_date, status)
+  values ('bbbbbbbb-0000-4000-8000-000000000032', '22222222-2222-4222-8222-222222222222', 'bbbbbbbb-0000-4000-8000-000000000002', '2026-11-30', 'paid')
+$$, '23503', null, 'user cannot record a payment on another user''s bill');
+
+select throws_ok($$
+  insert into public.goal_contributions (id, user_id, goal_id, amount_minor, currency, contributed_on)
+  values ('bbbbbbbb-0000-4000-8000-000000000033', '22222222-2222-4222-8222-222222222222', 'bbbbbbbb-0000-4000-8000-000000000003', 1, 'USD', '2026-10-08')
+$$, '23503', null, 'user cannot contribute to another user''s goal');
+
+select throws_ok($$
+  insert into public.savings_goals (id, user_id, name, target_amount_minor, currency)
+  values ('bbbbbbbb-0000-4000-8000-000000000034', '11111111-1111-4111-8111-111111111111', 'Not mine', 1, 'USD')
+$$, '42501', null, 'user cannot create goals for someone else');
 
 -- ---- anonymous ----
 reset role;

@@ -33,6 +33,7 @@ import type {
   TransactionRepository,
   TransferLegSummary,
 } from '../types';
+import { releaseBillPayments } from './billSchedule';
 import { findRate } from './SqliteExchangeRateRepository';
 import { listTags, resolveTagIds } from './SqliteTagRepository';
 import {
@@ -400,17 +401,31 @@ export class SqliteTransactionRepository implements TransactionRepository {
   async create(input: TransactionInput): Promise<string> {
     const valid = validate(transactionInputSchema, input);
     const id = this.ctx.newId();
-    await this.db.transaction(async (tx) => {
-      const account = await this.requireAccount(tx, valid.accountId, 'accountId', true);
-      await this.checkCategories(tx, valid, new Set());
-      await this.checkRefundLink(tx, valid);
-      const row = await this.buildEntryRow(tx, valid, account);
-      await insertSynced(tx, this.ctx, 'transactions', id, row);
-      await this.writeSplits(tx, id, valid, row);
-      await this.writeTags(tx, id, valid.tagNames);
-    });
+    await this.db.transaction((tx) => this.insertEntry(tx, id, valid));
     this.notify();
     return id;
+  }
+
+  /**
+   * Creates an entry inside a caller's write transaction (e.g. paying a
+   * bill), so the transaction and the record that references it commit
+   * together and are queued parent-first. The caller notifies changes.
+   */
+  async createInTransaction(tx: SqlExecutor, input: TransactionInput): Promise<string> {
+    const valid = validate(transactionInputSchema, input);
+    const id = this.ctx.newId();
+    await this.insertEntry(tx, id, valid);
+    return id;
+  }
+
+  private async insertEntry(tx: SqlExecutor, id: string, valid: ValidTransactionInput) {
+    const account = await this.requireAccount(tx, valid.accountId, 'accountId', true);
+    await this.checkCategories(tx, valid, new Set());
+    await this.checkRefundLink(tx, valid);
+    const row = await this.buildEntryRow(tx, valid, account);
+    await insertSynced(tx, this.ctx, 'transactions', id, row);
+    await this.writeSplits(tx, id, valid, row);
+    await this.writeTags(tx, id, valid.tagNames);
   }
 
   async update(id: string, input: TransactionInput): Promise<void> {
@@ -450,21 +465,30 @@ export class SqliteTransactionRepository implements TransactionRepository {
   }
 
   async createTransfer(input: TransferInput): Promise<string> {
-    const valid = validate(transferInputSchema, input);
-    const transferId = this.ctx.newId();
     let outgoingId = '';
     await this.db.transaction(async (tx) => {
-      const from = await this.requireAccount(tx, valid.fromAccountId, 'fromAccountId', true);
-      const to = await this.requireAccount(tx, valid.toAccountId, 'toAccountId', true);
-      outgoingId = this.ctx.newId();
-      await this.writeTransfer(tx, transferId, valid, from, to, {
-        outgoingId,
-        incomingId: this.ctx.newId(),
-        isNew: true,
-      });
+      outgoingId = (await this.createTransferInTransaction(tx, input)).outgoingId;
     });
     this.notify();
     return outgoingId;
+  }
+
+  /** Creates a transfer inside a caller's write transaction (caller notifies). */
+  async createTransferInTransaction(
+    tx: SqlExecutor,
+    input: TransferInput,
+  ): Promise<{ transferId: string; outgoingId: string }> {
+    const valid = validate(transferInputSchema, input);
+    const transferId = this.ctx.newId();
+    const from = await this.requireAccount(tx, valid.fromAccountId, 'fromAccountId', true);
+    const to = await this.requireAccount(tx, valid.toAccountId, 'toAccountId', true);
+    const outgoingId = this.ctx.newId();
+    await this.writeTransfer(tx, transferId, valid, from, to, {
+      outgoingId,
+      incomingId: this.ctx.newId(),
+      isNew: true,
+    });
+    return { transferId, outgoingId };
   }
 
   async updateTransfer(transferId: string, input: TransferInput): Promise<void> {
@@ -573,9 +597,11 @@ export class SqliteTransactionRepository implements TransactionRepository {
   // ---------------------------------------------------------------- helpers
 
   private notify(): void {
-    // Balances are derived from transactions, so account queries refresh too.
+    // Balances are derived from transactions, so account queries refresh too;
+    // bill payments may have been released by a delete.
     this.ctx.onChange('transactions');
     this.ctx.onChange('accounts');
+    this.ctx.onChange('bills');
   }
 
   private async requireTransaction(tx: SqlExecutor, id: string): Promise<TransactionRow> {
@@ -793,6 +819,8 @@ export class SqliteTransactionRepository implements TransactionRepository {
   }
 
   private async softDelete(tx: SqlExecutor, id: string): Promise<void> {
+    // A bill paid by this transaction becomes unpaid again for that due date.
+    await releaseBillPayments(tx, this.ctx, id);
     await this.softDeleteChildren(tx, id, { splits: true, tags: true, attachments: true });
     await updateSynced(tx, this.ctx, 'transactions', id, { deleted_at: this.ctx.now() }, 'delete');
   }

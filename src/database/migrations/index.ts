@@ -2,6 +2,7 @@ import type { SqlDatabase } from '../types';
 import { migration001Initial } from './001_initial';
 import { migration002RegionalPreferences } from './002_regional_preferences';
 import { migration003Transactions } from './003_transactions';
+import { migration004Planning } from './004_planning';
 
 export interface Migration {
   version: number;
@@ -18,6 +19,7 @@ export const MIGRATIONS: readonly Migration[] = [
   migration001Initial,
   migration002RegionalPreferences,
   migration003Transactions,
+  migration004Planning,
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 0;

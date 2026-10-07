@@ -17,6 +17,11 @@ import { AccountRow } from '@/features/accounts/components/AccountRow';
 import { TotalBalanceCard } from '@/features/accounts/components/TotalBalanceCard';
 import { useAccountsOverview } from '@/features/accounts/hooks/useAccounts';
 import { CashFlowCard } from '@/features/dashboard/components/CashFlowCard';
+import {
+  HomeBudgets,
+  HomeGoals,
+  HomeUpcomingBills,
+} from '@/features/dashboard/components/PlanningCards';
 import { TopCategoriesCard } from '@/features/dashboard/components/TopCategoriesCard';
 import { SyncStatusBanner } from '@/features/sync/components/SyncStatusBanner';
 import { TransactionRow } from '@/features/transactions/components/TransactionRow';
@@ -146,6 +151,10 @@ export default function HomeScreen() {
 
             {quickActions}
 
+            <HomeBudgets />
+            <HomeUpcomingBills />
+            <HomeGoals />
+
             {insights.data ? (
               <View style={styles.section}>
                 <SectionHeader title={t('home.topCategories')} />
@@ -188,6 +197,9 @@ export default function HomeScreen() {
               />
             </Card>
             {quickActions}
+            <HomeUpcomingBills />
+            <HomeBudgets />
+            <HomeGoals />
           </>
         )
       ) : null}
