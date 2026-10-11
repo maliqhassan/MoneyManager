@@ -85,6 +85,16 @@ Known edge: two devices paying the same bill due date offline both create an
 expense; the second payment row is rejected by the server's unique
 (bill, due date) index and parked as failed (visible in Settings → Sync).
 
+## CSV import
+
+Imported transactions are ordinary local writes: the `import_batches` row is
+queued first, then each chunk of 200 rows commits the transactions and their
+outbox entries (plus the batch's `imported_count`) in one SQLite transaction.
+Imports work fully offline and sync later like manual entries; nothing is
+sent to the server directly and RLS applies as usual. A failed chunk rolls
+back alone; earlier chunks stay committed and a repeat import skips them by
+`import_hash`. The CSV file itself never leaves the device.
+
 ## Receipts (files)
 
 Receipt **rows** (`attachments`) sync through the outbox like any other table.

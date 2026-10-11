@@ -29,6 +29,8 @@ import type {
   MerchantSpendRow,
 } from '@/domain/reports/aggregate';
 import type { DateRange } from '@/domain/reports/periods';
+
+import type { SqliteExportRepository } from './sqlite/SqliteExportRepository';
 import type {
   BillInput,
   BillLinkInput,
@@ -460,6 +462,64 @@ export interface ReportRepository {
   lines(query: ReportLineQuery): Promise<ReportLine[]>;
 }
 
+// ------------------------------------------------------- import / export
+
+export interface ImportProgress {
+  done: number;
+  total: number;
+}
+
+export interface ImportRunResult {
+  batchId: Uuid;
+  status: 'committed' | 'failed';
+  /** Rows written by this run (completed chunks stay even when it failed). */
+  imported: number;
+  /** Rows skipped because their identity already existed. */
+  skipped: number;
+  error: unknown;
+}
+
+export interface ImportBatchSummary {
+  id: Uuid;
+  fileName: string;
+  createdAt: string;
+  rowCount: number;
+  importedCount: number;
+}
+
+export interface ImportRepository {
+  existingHashes(hashes: readonly string[]): Promise<Set<string>>;
+  /** Counts of existing transactions per (account, date, signed amount, currency). */
+  existingMatches(
+    accountIds: readonly string[],
+    from: IsoDate,
+    to: IsoDate,
+  ): Promise<Map<string, number>>;
+  run(
+    meta: {
+      fileName: string;
+      accountId: Uuid | null;
+      rowCount: number;
+      duplicateCount: number;
+      errorCount: number;
+      columnMapping: Record<string, unknown>;
+    },
+    rows: readonly { hash: string; input: TransactionInput }[],
+    onProgress?: (p: ImportProgress) => void,
+  ): Promise<ImportRunResult>;
+  incompleteBatches(): Promise<ImportBatchSummary[]>;
+  dismissBatch(id: Uuid): Promise<void>;
+}
+
+export interface ExportFilter {
+  from: IsoDate | null;
+  to: IsoDate | null;
+  accountIds: readonly Uuid[];
+  types: readonly TransactionType[];
+}
+
+export type ExportRepository = SqliteExportRepository;
+
 export interface Repositories {
   accounts: AccountRepository;
   preferences: PreferencesRepository;
@@ -473,6 +533,8 @@ export interface Repositories {
   bills: BillRepository;
   goals: GoalRepository;
   reports: ReportRepository;
+  imports: ImportRepository;
+  exports: ExportRepository;
 }
 
 export type LocalChangeListener = (table: string) => void;

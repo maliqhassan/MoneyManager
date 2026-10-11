@@ -196,6 +196,8 @@ function GatedStack() {
           name="goals/[id]/contribute"
           options={{ title: t('goals.contribution.add'), presentation: 'modal' }}
         />
+        <Stack.Screen name="data/import" options={{ title: t('dataImport.title') }} />
+        <Stack.Screen name="data/export" options={{ title: t('dataExport.title') }} />
         <Stack.Screen
           name="reports/categories"
           options={{ title: t('reports.sections.categories') }}

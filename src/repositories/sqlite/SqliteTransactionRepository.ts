@@ -411,18 +411,36 @@ export class SqliteTransactionRepository implements TransactionRepository {
    * bill), so the transaction and the record that references it commit
    * together and are queued parent-first. The caller notifies changes.
    */
-  async createInTransaction(tx: SqlExecutor, input: TransactionInput): Promise<string> {
+  async createInTransaction(
+    tx: SqlExecutor,
+    input: TransactionInput,
+    imported?: { batchId: string; hash: string },
+  ): Promise<string> {
     const valid = validate(transactionInputSchema, input);
     const id = this.ctx.newId();
-    await this.insertEntry(tx, id, valid);
+    await this.insertEntry(tx, id, valid, imported);
     return id;
   }
 
-  private async insertEntry(tx: SqlExecutor, id: string, valid: ValidTransactionInput) {
+  /**
+   * Validates and writes an entry. `imported` (CSV import only) records the
+   * import batch and the row's stable identity; every other rule is the same
+   * as for an entry typed by hand.
+   */
+  private async insertEntry(
+    tx: SqlExecutor,
+    id: string,
+    valid: ValidTransactionInput,
+    imported?: { batchId: string; hash: string },
+  ) {
     const account = await this.requireAccount(tx, valid.accountId, 'accountId', true);
     await this.checkCategories(tx, valid, new Set());
     await this.checkRefundLink(tx, valid);
     const row = await this.buildEntryRow(tx, valid, account);
+    if (imported) {
+      row.import_batch_id = imported.batchId;
+      row.import_hash = imported.hash;
+    }
     await insertSynced(tx, this.ctx, 'transactions', id, row);
     await this.writeSplits(tx, id, valid, row);
     await this.writeTags(tx, id, valid.tagNames);

@@ -99,6 +99,20 @@ objects for deleted receipts before account deletion.
   values for every chart.
 - No migration: the existing indexes cover the report queries.
 
+## Phase 5 — CSV import & data portability ✅
+
+- More → Your data: guided CSV import (file → columns → formats → accounts &
+  categories → review → confirm → progress → summary) and data export.
+- Robust CSV reading, explicit date-format and amount rules, exact minor
+  units, idempotent identities (bank ID or fingerprint), possible-duplicate
+  review, chunked resumable import through the repositories and outbox.
+- Never creates one-legged transfers, never invents refund links, never
+  infers splits.
+- Export: filtered transactions CSV, or a ZIP of every entity with README and
+  manifest; formula-injection protection; shared via the system share sheet.
+- New dependencies: `expo-document-picker`, `expo-sharing`, `fflate` (ZIP,
+  pure JS). No migration.
+
 ## Next — Multi-currency rates
 
 - `exchange-rates` Edge Function (scheduled) populating `exchange_rates`.
@@ -119,15 +133,16 @@ objects for deleted receipts before account deletion.
 - Income vs expenses, by category/merchant, trends, cash flow, budget vs
   actual, balance history, period comparison, custom ranges.
 
-## Later — CSV import
+## Later — Import follow-ups
 
-- `expo-document-picker`, column detection/mapping, preview, duplicate
-  detection (`import_hash`), auto-categorisation, uncategorised review.
+- Rule-based auto-categorisation, OFX/QIF, saved column mappings per bank,
+  pairing transfer rows across two imported accounts.
 
 ## Cross-cutting backlog
 
 - Sync: conflict review screen; tombstone purge; failed-entry retry UI.
-- Data export (CSV/JSON) Edge Function — required for GDPR-style requests.
+- Server-side data export (Edge Function) for GDPR-style requests; restorable
+  backups.
 - Sentry integration via `setErrorReporter` (install `@sentry/react-native`).
 - Apple Sign-In (required on iOS once Google sign-in ships).
 - Optional SQLCipher encryption for the local database.

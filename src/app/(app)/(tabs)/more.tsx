@@ -71,6 +71,23 @@ export default function SettingsScreen() {
         />
       </Card>
 
+      <SectionHeader title={t('more.dataSection')} />
+      <Card padding="none">
+        <ListItem
+          icon="document-text-outline"
+          title={t('more.importCsv')}
+          subtitle={t('more.importCsvHint')}
+          onPress={() => router.push('/data/import' as Href)}
+        />
+        <Divider inset={64} />
+        <ListItem
+          icon="share-outline"
+          title={t('more.exportData')}
+          subtitle={t('more.exportDataHint')}
+          onPress={() => router.push('/data/export' as Href)}
+        />
+      </Card>
+
       <SectionHeader title={t('more.preferencesSection')} />
       <Card padding="none">
         <ListItem

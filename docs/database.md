@@ -287,3 +287,75 @@ columns (such pushes are retried, then parked as failed).
 - **Indexes**: `idx_transactions_date`, `idx_transaction_splits_transaction`
   and `idx_transactions_account_date` serve the report queries (verified with
   EXPLAIN QUERY PLAN in `reports-performance.test.ts`).
+
+## CSV import & export: rules
+
+No migration: the foundation schema already has `import_batches`,
+`import_rows` and `transactions.import_batch_id` / `import_hash` (synced, RLS,
+composite `(id, user_id)` foreign keys). `import_rows` is not used yet — the
+source CSV is never stored.
+
+**Import** (`domain/csv`, `domain/imports`, `features/data/importPlanner.ts`,
+`SqliteImportRepository`):
+
+- **Reading**: RFC 4180 (quotes, `""`, line breaks inside quotes, CRLF/LF/CR),
+  UTF-8 with or without BOM, delimiter detected among `,` `;` tab `|`. Lines
+  that can't be read (unclosed quote, text after a closing quote, too many
+  fields) are listed with their line number and never imported. Max 10 MB.
+- **Dates**: the user chooses year-month-day, day/month/year or
+  month/day/year (detected when only one fits). Two-digit years are rejected;
+  every date is validated as a real calendar date. ISO instants with `Z` or an
+  offset are converted to the user's time zone. Imported entries get 12:00
+  local time.
+- **Amounts**: decimal text → integer minor units with the account currency's
+  exponent (no floats); more decimals than the currency allows is an error,
+  never rounded. Parentheses, leading/trailing minus and `−` mean negative.
+  Modes: one signed column (the user says whether negative is money out or
+  in), separate debit/credit columns (exactly one must have a value), or
+  amount + type column (`expense`/`debit`/`dr`…, `income`/`credit`/`cr`…,
+  `refund`). Zero amounts are rejected.
+- **Currency**: a currency column must match the target account's currency;
+  there is no conversion on import.
+- **Identity** (idempotency): with a transaction-ID column,
+  `x:` + FNV-1a-64(`account | external id`); otherwise `f:` +
+  FNV-1a-64(`account | date | type | amount | currency | normalised merchant #
+  n`), where _n_ is the occurrence within the file (two identical coffees in
+  one file are two transactions). Rows whose identity is already stored (not
+  deleted) are skipped — re-importing a file, or retrying after a crash, never
+  duplicates. Deleting an imported transaction and importing again restores
+  it.
+- **Possible duplicates**: rows matching an existing transaction on account,
+  date, signed amount and currency (multiset, so two existing ones match at
+  most two rows) are skipped unless the user includes them one by one.
+- **Transfers, refunds, splits**: a CSV row is one side of a transfer, so it
+  is never imported as a transfer (skipped, or imported as income/expense by
+  sign if the user chooses). Refund rows are imported unlinked (no invented
+  original). Splits are never inferred.
+- **Accounts & categories**: labels are matched to existing active
+  accounts/categories by normalised name only; the user confirms every match.
+  Unmatched categories fall back to the chosen "other spending / other
+  income" category. Archived accounts can't receive imports.
+- **Writing**: `import_batches` row (`previewed`) → chunks of 200 rows, each in
+  one SQLite transaction through
+  `SqliteTransactionRepository.createInTransaction` (same Zod validation,
+  balances and outbox as manual entries) → `committed` (or `failed` with the
+  rows saved so far). An unfinished batch is shown on the import screen;
+  choosing the file again finishes it.
+
+**Export** (`domain/exports`, `features/data/exportBuilder.ts`,
+`SqliteExportRepository`, `services/data/dataFiles.ts`), format version 1:
+
+- UTF-8 with BOM, CRLF, RFC 4180 quoting. Amounts are exact decimal strings
+  plus the currency code and `amount_minor`; dates are ISO `YYYY-MM-DD` plus a
+  display column in the user's format.
+- Free-text cells starting with `=` `+` `-` `@`, tab or CR are prefixed with
+  `'` (formula-injection protection). Numeric and ID columns are not altered.
+- Transactions only → one CSV (a ZIP when split details exist). Everything →
+  ZIP with `transactions.csv`, `transaction_splits.csv`, `accounts.csv`,
+  `categories.csv`, `budgets.csv`, `budget_revisions.csv`, `bills.csv`,
+  `bill_payments.csv`, `goals.csv`, `goal_contributions.csv`, `README.txt`
+  and `manifest.json` (format version, app version, time zone, base
+  currency, filters, row counts, unsynced-change count).
+- Transfers keep both legs with `transfer_id` and `transfer_other_account`; refunds
+  keep `refund_of_transaction_id`. Attachments, tokens and keys are never exported. It is
+  an export, not a restorable backup.
