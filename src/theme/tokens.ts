@@ -46,6 +46,9 @@ export const palette = {
   amber400: '#F5B544',
   amber700: '#8A5A00',
   amber900: '#3D2A06',
+  // Chart series (validated as a CVD-safe pair with blue600 / blue500).
+  orange500: '#EB6834',
+  orange600: '#D95926',
 } as const;
 
 /** 4-pt spacing scale. */

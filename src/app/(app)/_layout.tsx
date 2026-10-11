@@ -196,6 +196,16 @@ function GatedStack() {
           name="goals/[id]/contribute"
           options={{ title: t('goals.contribution.add'), presentation: 'modal' }}
         />
+        <Stack.Screen
+          name="reports/categories"
+          options={{ title: t('reports.sections.categories') }}
+        />
+        <Stack.Screen
+          name="reports/merchants"
+          options={{ title: t('reports.sections.merchants') }}
+        />
+        <Stack.Screen name="reports/balances" options={{ title: t('reports.sections.balances') }} />
+        <Stack.Screen name="reports/transactions" options={{ title: t('reports.lines.title') }} />
         <Stack.Screen name="settings/regional" options={{ title: t('regional.title') }} />
         <Stack.Screen name="settings/privacy" options={{ title: t('privacy.title') }} />
         <Stack.Screen name="settings/about" options={{ title: t('about.title') }} />

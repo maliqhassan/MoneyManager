@@ -9,6 +9,7 @@ import { SqliteCategoryRepository } from './sqlite/SqliteCategoryRepository';
 import { SqliteCategoryRuleRepository } from './sqlite/SqliteCategoryRuleRepository';
 import { SqliteExchangeRateRepository } from './sqlite/SqliteExchangeRateRepository';
 import { SqliteGoalRepository } from './sqlite/SqliteGoalRepository';
+import { SqliteReportRepository } from './sqlite/SqliteReportRepository';
 import { SqlitePreferencesRepository } from './sqlite/SqlitePreferencesRepository';
 import { SqliteTagRepository } from './sqlite/SqliteTagRepository';
 import { SqliteTransactionRepository } from './sqlite/SqliteTransactionRepository';
@@ -34,5 +35,6 @@ export function createRepositories(db: SqlDatabase, ctx: RepositoryContext): Rep
     budgets: new SqliteBudgetRepository(db, ctx),
     bills: new SqliteBillRepository(db, ctx, transactions),
     goals: new SqliteGoalRepository(db, ctx, transactions),
+    reports: new SqliteReportRepository(db, ctx.userId),
   };
 }

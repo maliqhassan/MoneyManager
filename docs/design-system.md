@@ -125,3 +125,20 @@ both become instant when the OS reduce-motion setting is on.
 
 The Budgets tab is the planning hub: chips switch between Budgets, Bills,
 Subscriptions and Goals (deep-linkable with `/budgets?section=bills`).
+
+## Phase 4 additions (charts)
+
+No chart library is installed: charts are plain React Native views, so there
+is no new native dependency and standalone builds are unaffected.
+
+| Component | Notes |
+| --- | --- |
+| `MonthlyColumns` | Income vs spending per month on one zero-based axis; legend always shown; each month is a button with a full written description; months before any data are drawn as a dashed outline ("No data yet"), distinct from zero; a table view is offered |
+| `BalanceColumns` | One account's balance on a single axis including zero (liabilities below the line); dates before the opening balance are outlines; the chart's accessibility label lists every value |
+| `ShareBar` | Thin proportional bar; hidden from screen readers because the value is always written beside it |
+| `ReportRow`, `PeriodPicker`, `ChangeLine`, `ExcludedNote` | Report building blocks; comparisons are written with an arrow icon, never colour-only |
+
+Series colours (`chartIncome` / `chartSpending`): light `#2F55D4` / `#EB6834`,
+dark `#4F74F0` / `#D95926` — validated as a colour-blind-safe pair (CVD ΔE
+≥ 28) with ≥ 3:1 contrast on the chart surface in both themes (also covered by
+`theme/__tests__/contrast.test.ts`). Text never uses series colours.

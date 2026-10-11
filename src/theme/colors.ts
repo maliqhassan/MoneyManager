@@ -41,6 +41,13 @@ export interface ColorScheme {
   overlay: string;
   skeleton: string;
   tabBar: string;
+  /**
+   * Chart series: income vs spending. A validated colour-blind-safe pair
+   * (≥ 3:1 against the surface); charts always add a legend and written
+   * values, so colour is never the only cue.
+   */
+  chartIncome: string;
+  chartSpending: string;
 }
 
 export const lightColors: ColorScheme = {
@@ -74,6 +81,8 @@ export const lightColors: ColorScheme = {
   overlay: 'rgba(11, 15, 20, 0.45)',
   skeleton: palette.gray100,
   tabBar: palette.white,
+  chartIncome: palette.blue600,
+  chartSpending: palette.orange500,
 };
 
 export const darkColors: ColorScheme = {
@@ -107,4 +116,6 @@ export const darkColors: ColorScheme = {
   overlay: 'rgba(0, 0, 0, 0.6)',
   skeleton: palette.gray800,
   tabBar: palette.gray850,
+  chartIncome: palette.blue500,
+  chartSpending: palette.orange600,
 };

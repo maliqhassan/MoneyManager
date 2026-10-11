@@ -43,6 +43,12 @@ function dataValue(ledger: Ledger): DataContextValue {
   };
 }
 
+export function createTestQueryClient(): QueryClient {
+  return new QueryClient({
+    defaultOptions: { queries: { retry: false, networkMode: 'always', gcTime: Infinity } },
+  });
+}
+
 /**
  * Renders a component with the app's theme, translations and a deterministic
  * formatter. Pass a `ledger` (test/ledger.ts) for components that read data
@@ -54,14 +60,19 @@ export function renderWithProviders(
     scheme = 'light',
     format = TEST_FORMAT_SETTINGS,
     ledger,
+    queryClient: providedClient,
     ...options
-  }: RenderOptions & { scheme?: 'light' | 'dark'; format?: FormatSettings; ledger?: Ledger } = {},
+  }: RenderOptions & {
+    scheme?: 'light' | 'dark';
+    format?: FormatSettings;
+    ledger?: Ledger;
+    /** Pass one to drive invalidation from the test (as DataProvider does). */
+    queryClient?: QueryClient;
+  } = {},
 ) {
   const theme = buildTheme(scheme, true);
   const formatter = createFormatter(format);
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false, networkMode: 'always', gcTime: Infinity } },
-  });
+  const queryClient = providedClient ?? createTestQueryClient();
   const data = ledger ? dataValue(ledger) : null;
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <SafeAreaProvider initialMetrics={SAFE_AREA_METRICS}>

@@ -40,6 +40,16 @@ describe.each([
   });
 });
 
+describe.each([
+  ['light', lightColors],
+  ['dark', darkColors],
+])('%s chart marks', (_name, colors) => {
+  // WCAG 1.4.11: graphical objects need 3:1 against adjacent colours.
+  it.each(['chartIncome', 'chartSpending'] as const)('%s is visible on the surface', (token) => {
+    expect(contrast(colors[token], colors.surface)).toBeGreaterThanOrEqual(3);
+  });
+});
+
 describe('account accent colors', () => {
   it.each([...ACCOUNT_COLORS])('white glyph on %s meets 4.5:1', (color) => {
     expect(contrast(lightColors.onAccent, color)).toBeGreaterThanOrEqual(AA_TEXT);

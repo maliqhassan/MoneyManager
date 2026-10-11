@@ -138,11 +138,20 @@ export default function HomeScreen() {
         hasTransactions ? (
           <>
             {insights.data ? (
-              <CashFlowCard
-                period={insights.data.period}
-                summary={insights.data.flow.summary}
-                missingRates={insights.data.flow.missingRates}
-              />
+              <View style={styles.section}>
+                <CashFlowCard
+                  period={insights.data.period}
+                  summary={insights.data.flow.summary}
+                  missingRates={insights.data.flow.missingRates}
+                />
+                <Button
+                  label={t('home.viewReports')}
+                  icon="bar-chart-outline"
+                  variant="ghost"
+                  size="md"
+                  onPress={() => router.navigate('/reports' as Href)}
+                />
+              </View>
             ) : insights.error ? (
               <ErrorState error={insights.error} onRetry={() => void insights.refetch()} />
             ) : (

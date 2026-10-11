@@ -23,6 +23,13 @@ import type { BudgetEvaluation } from '@/domain/planning/budgets';
 import type { GoalProgress } from '@/domain/planning/goals';
 import type { PeriodicCost } from '@/domain/planning/recurrence';
 import type {
+  BalanceInput,
+  CategorySpendRow as ReportCategoryRow,
+  FlowRow,
+  MerchantSpendRow,
+} from '@/domain/reports/aggregate';
+import type { DateRange } from '@/domain/reports/periods';
+import type {
   BillInput,
   BillLinkInput,
   BillPaymentInput,
@@ -404,6 +411,55 @@ export interface GoalRepository {
   transferCandidates(limit: number): Promise<TransferCandidate[]>;
 }
 
+// ---------------------------------------------------------------- reports
+
+export interface ReportLineQuery {
+  range: DateRange;
+  kind: 'income' | 'spending' | 'category' | 'merchant';
+  /** kind 'category': the category (null = uncategorised). */
+  categoryId?: string | null;
+  /** kind 'category': also match its subcategories (top-level rows). */
+  includeSubcategories?: boolean;
+  /** kind 'merchant': normalised key (null = no merchant recorded). */
+  merchantKey?: string | null;
+}
+
+/** One entry (or split line) behind a report value, in its own currency. */
+export interface ReportLine {
+  transactionId: Uuid;
+  type: 'income' | 'expense' | 'refund';
+  payee: string | null;
+  localDate: IsoDate;
+  accountName: string;
+  categoryId: Uuid | null;
+  categoryName: string | null;
+  categorySystemKey: string | null;
+  /** Signed as stored (expenses < 0). */
+  amountMinor: number;
+  currency: CurrencyCode;
+  isSplitLine: boolean;
+}
+
+export interface AccountBalanceHistoryInput {
+  accountId: Uuid;
+  name: string;
+  type: Account['type'];
+  currency: CurrencyCode;
+  input: BalanceInput;
+}
+
+export interface ReportRepository {
+  flows(range: DateRange, base: CurrencyCode): Promise<FlowRow[]>;
+  categorySpending(range: DateRange, base: CurrencyCode): Promise<ReportCategoryRow[]>;
+  merchantSpending(range: DateRange, base: CurrencyCode): Promise<MerchantSpendRow[]>;
+  /** Display name per merchant key (the most recent spelling used). */
+  merchantNames(keys: readonly string[]): Promise<Record<string, string>>;
+  /** Earliest date with any recorded data (transaction or opening balance). */
+  dataStart(): Promise<IsoDate | null>;
+  balanceInputs(range: DateRange): Promise<AccountBalanceHistoryInput[]>;
+  lines(query: ReportLineQuery): Promise<ReportLine[]>;
+}
+
 export interface Repositories {
   accounts: AccountRepository;
   preferences: PreferencesRepository;
@@ -416,6 +472,7 @@ export interface Repositories {
   budgets: BudgetRepository;
   bills: BillRepository;
   goals: GoalRepository;
+  reports: ReportRepository;
 }
 
 export type LocalChangeListener = (table: string) => void;

@@ -42,3 +42,29 @@ export class Converter {
     return [...this.missing].sort();
   }
 }
+
+/** A grouped transaction amount as stored, with its recorded base snapshot. */
+export interface StoredAmount {
+  local_date: string;
+  currency: CurrencyCode;
+  base_currency: CurrencyCode;
+  base_fx_source: string;
+  amount: number;
+  base: number;
+}
+
+/**
+ * An amount in `target`: the amount itself when already in that currency,
+ * else the base snapshot recorded at entry when it is in `target`, else a
+ * KNOWN rate on the entry date. Null (recorded in `converter.missing`) when
+ * no rate is known.
+ */
+export function resolveInCurrency(
+  converter: Converter,
+  row: StoredAmount,
+  target: CurrencyCode,
+): Promise<number | null> | number {
+  if (row.currency === target) return row.amount;
+  if (row.base_currency === target && row.base_fx_source !== 'unconverted') return row.base;
+  return converter.convert(row.amount, row.currency, target, row.local_date);
+}

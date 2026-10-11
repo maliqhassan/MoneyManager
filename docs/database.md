@@ -253,3 +253,37 @@ columns (such pushes are retried, then parked as failed).
   (or linked later) does. Removing a contribution keeps its transfer. Goal
   currency is fixed once contributions exist. Completion is derived
   (saved ≥ target); overfunding is shown, not capped.
+
+## Reports: rules
+
+- **Source**: the local SQLite database (works offline; unsynced entries are
+  included once — sync never duplicates rows, which are keyed by id).
+- **Periods** (`domain/reports/periods.ts`): inclusive `local_date` ranges in
+  the user's time zone and first day of week. Periods containing today run
+  to today and are compared with the same elapsed span of the previous
+  period (month-ends clamp); completed periods compare with the previous
+  completed period; custom ranges with the equal-length range before them.
+- **Income** = income entries. **Spending** = expenses − refunds (refunds
+  reduce the spending of their own category/merchant; never income).
+  Transfers — including credit-card payments and goal transfers — are never
+  income or spending; goal contributions are planning records.
+- **Splits**: category reports use split lines; totals and merchant reports
+  use the parent once.
+- **Savings rate** = (income − spending) ÷ income; not shown when income ≤ 0
+  or when totals are incomplete. Negative values are shown as they are.
+- **Currency**: totals are in the base currency using each entry's recorded
+  base snapshot, else a known rate on the entry date (direct or inverse).
+  Without a rate the amount is excluded, listed in its own currency, and the
+  total is labelled incomplete; comparisons are only shown when both periods
+  are complete.
+- **Merchants**: grouped by the existing `merchant_key` normalisation only;
+  entries without a merchant form a labelled "No merchant recorded" group.
+- **Budget vs actual**: budget periods from the budget engine that overlap the
+  report range, shown whole (never prorated) and labelled when they extend
+  beyond it.
+- **Balance history**: opening balance + recorded postings (the same ledger as
+  the current balance), per account in its own currency; nothing is shown
+  before an account's opening-balance date. No snapshot table is needed.
+- **Indexes**: `idx_transactions_date`, `idx_transaction_splits_transaction`
+  and `idx_transactions_account_date` serve the report queries (verified with
+  EXPLAIN QUERY PLAN in `reports-performance.test.ts`).

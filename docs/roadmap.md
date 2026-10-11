@@ -83,6 +83,22 @@ objects for deleted receipts before account deletion.
   `bills.anchor_date/end_date/autopay`, contribution currency/account/transfer,
   integrity triggers (budget category kind, bill currency = account currency).
 
+## Phase 4 — Reports, analytics & insights ✅
+
+- Reports tab (existing destination; no new tabs): period selector (this/last
+  week, this/last month, last 3 months, this/last year, custom), income vs
+  spending with previous-period comparison, savings rate (historical
+  measurement), 12-month trend, spending by category (with subcategories) and
+  by merchant, budget vs actual (from the budget engine), account balance
+  history derived from the ledger, drill-down to the exact transactions.
+- Reporting layer: `domain/reports` (periods + aggregation, pure and exact)
+  over `SqliteReportRepository` (date-range SQL aggregation, base-currency
+  resolution with known rates only).
+- Charts drawn with plain React Native views (no chart dependency, no native
+  module); validated CVD-safe income/spending colours; table view and written
+  values for every chart.
+- No migration: the existing indexes cover the report queries.
+
 ## Next — Multi-currency rates
 
 - `exchange-rates` Edge Function (scheduled) populating `exchange_rates`.

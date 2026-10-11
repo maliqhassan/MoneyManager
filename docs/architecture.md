@@ -188,3 +188,19 @@ TransactionForm (RHF + Zod, locale amount parsing)
 - Category suggestion (`useCategorySuggestion`) is deterministic and only fills
   the field while the user has not picked a category.
 - Receipts: see [offline-sync.md](offline-sync.md#receipts-files).
+
+## Reports (Phase 4)
+
+```
+SqliteReportRepository (SQL: date-range GROUP BY day/currency)
+  └─► resolveInCurrency (base snapshot or known rate; else null)
+        └─► domain/reports/aggregate (pure, exact: totals, shares, trends,
+              comparisons, balance series, budget periods in range)
+              └─► features/reports/hooks (TanStack Query)
+                    └─► screens + plain-view charts (formatting only)
+```
+
+Report query keys start with the table they derive from (`transactions`,
+`budgets`, `accounts`), so `providers/queryDependencies.ts` refreshes them
+after any relevant local write. The selected period lives in a small Zustand
+store (`features/reports/periodStore.ts`).
