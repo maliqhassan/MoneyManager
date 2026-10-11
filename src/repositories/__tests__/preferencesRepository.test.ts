@@ -114,7 +114,7 @@ describe('completeOnboarding', () => {
 
   it('saves the choices and marks onboarding complete', async () => {
     await insertSyncedPreferences(db);
-    const sync = jest.fn();
+    const sync = jest.fn(async () => ({ errorCode: null }));
     await completeOnboarding({ preferences: repo, sync }, draft, '2026-10-08T09:00:00.000Z');
     expect(sync).not.toHaveBeenCalled();
     expect(await repo.get()).toMatchObject({
@@ -128,14 +128,17 @@ describe('completeOnboarding', () => {
   });
 
   it('syncs first when preferences have not arrived yet', async () => {
-    const sync = jest.fn(() => insertSyncedPreferences(db));
+    const sync = jest.fn(async () => {
+      await insertSyncedPreferences(db);
+      return { errorCode: null };
+    });
     await completeOnboarding({ preferences: repo, sync }, draft, '2026-10-08T09:00:00.000Z');
     expect(sync).toHaveBeenCalledTimes(1);
     expect((await repo.get())?.onboardingCompletedAt).toBe('2026-10-08T09:00:00.000Z');
   });
 
   it('fails with an offline error (keeping the draft) when preferences are unavailable', async () => {
-    const sync = jest.fn(async () => undefined);
+    const sync = jest.fn(async () => ({ errorCode: 'network' as const }));
     await expect(
       completeOnboarding({ preferences: repo, sync }, draft, '2026-10-08T09:00:00.000Z'),
     ).rejects.toMatchObject({ code: 'offline' });

@@ -23,6 +23,9 @@ export default function ReadyStep() {
   const account = useAccount(progress?.accountId ?? '');
 
   const finish = useMutation({
+    // Never paused by connectivity: the outcome (success or a specific error)
+    // is always reported, so the button can't stay busy indefinitely.
+    networkMode: 'always',
     mutationFn: async () => {
       if (!progress) return;
       await completeOnboarding(
@@ -37,7 +40,15 @@ export default function ReadyStep() {
 
   if (!progress) return null;
   const { draft } = progress;
-  const offline = finish.error && toAppError(finish.error).code === 'offline';
+  const errorCode = finish.error ? toAppError(finish.error).code : null;
+  const notice =
+    errorCode === 'offline' || errorCode === 'network'
+      ? { icon: 'cloud-offline-outline' as const, text: t('onboarding.ready.needsConnection') }
+      : errorCode === 'server_not_ready'
+        ? { icon: 'server-outline' as const, text: t('onboarding.ready.serverNotReady') }
+        : errorCode === 'unauthorized'
+          ? { icon: 'key-outline' as const, text: t('onboarding.ready.sessionExpired') }
+          : null;
 
   const rows: { label: string; value: string }[] = [
     {
@@ -66,9 +77,12 @@ export default function ReadyStep() {
       onBack={() => goBack('account')}
       footer={
         <Button
-          label={t('onboarding.ready.start')}
+          label={finish.error ? t('onboarding.ready.tryAgain') : t('onboarding.ready.start')}
           loading={finish.isPending}
-          onPress={() => finish.mutate()}
+          onPress={() => {
+            // One completion at a time; it is idempotent, but taps are ignored while busy.
+            if (!finish.isPending) finish.mutate();
+          }}
         />
       }
     >
@@ -87,11 +101,11 @@ export default function ReadyStep() {
           </View>
         ))}
       </Card>
-      {offline ? (
+      {notice ? (
         <View style={styles.notice} accessibilityRole="alert">
-          <Icon name="cloud-offline-outline" size={18} tone="warning" />
+          <Icon name={notice.icon} size={18} tone="warning" />
           <Text variant="bodySmall" tone="textSecondary" style={styles.noticeText}>
-            {t('onboarding.ready.needsConnection')}
+            {notice.text}
           </Text>
         </View>
       ) : (

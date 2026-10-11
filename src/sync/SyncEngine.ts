@@ -7,6 +7,7 @@ import {
   getDueEntries,
   hasPendingChanges,
   nextBackoffMs,
+  requeueBlockedByServer,
   resetInFlight,
 } from './outbox';
 import { SYNC_TABLES, type SyncTableName } from './registry';
@@ -40,12 +41,17 @@ export interface SyncEngineOptions {
 
 const keepRemote: ConflictResolver = () => 'keep_remote';
 
-/** Errors that mean "stop syncing now" rather than "this record failed". */
+/**
+ * Errors that mean "stop syncing now" rather than "this record failed".
+ * 'server_not_ready' (schema not deployed) must never park records as
+ * failed: the data is fine and will sync once the server is set up.
+ */
 const HALTING_ERRORS: ReadonlySet<ErrorCode> = new Set([
   'network',
   'offline',
   'timeout',
   'unauthorized',
+  'server_not_ready',
 ]);
 
 class HaltSyncError extends Error {
@@ -150,6 +156,7 @@ export class SyncEngine {
     this.updateStatus({ phase: 'syncing', lastErrorCode: null });
     try {
       await resetInFlight(this.db, this.nowIso());
+      await requeueBlockedByServer(this.db, this.nowIso());
       await this.push(result);
       result.pulled = await this.pull();
       this.updateStatus({ phase: 'idle', lastSyncedAt: this.nowIso() });

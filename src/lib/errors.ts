@@ -18,6 +18,7 @@ export const ERROR_CODES = [
   'rate_limited',
   'storage',
   'config',
+  'server_not_ready',
   'auth_invalid_credentials',
   'auth_email_not_confirmed',
   'auth_email_taken',
@@ -66,6 +67,22 @@ function asErrorLike(error: unknown): ErrorLike {
   return typeof error === 'object' && error !== null ? (error as ErrorLike) : {};
 }
 
+/**
+ * The server is reachable but its schema is missing what the app needs
+ * (table, column or function not deployed yet — e.g. migrations not applied).
+ * Not caused by the record being sent, so sync stops instead of giving up on
+ * that record. PostgREST: PGRST202/204/205; Postgres: 42P01/42703/42883/3F000.
+ */
+const SCHEMA_MISSING_CODES = new Set([
+  'PGRST202',
+  'PGRST204',
+  'PGRST205',
+  '42P01',
+  '42703',
+  '42883',
+  '3F000',
+]);
+
 const AUTH_ERROR_CODES: Record<string, ErrorCode> = {
   invalid_credentials: 'auth_invalid_credentials',
   email_not_confirmed: 'auth_email_not_confirmed',
@@ -96,6 +113,9 @@ export function toAppError(error: unknown): AppError {
     return new AppError('network', 'Network request failed', { cause: error, retryable: true });
   }
   if (name === 'ZodError') return new AppError('validation', 'Validation failed', { cause: error });
+  if (SCHEMA_MISSING_CODES.has(code)) {
+    return new AppError('server_not_ready', message, { cause: error, retryable: true });
+  }
   const authCode = AUTH_ERROR_CODES[code];
   if (authCode) return new AppError(authCode, message, { cause: error });
   if (code === '23505' || status === 409)

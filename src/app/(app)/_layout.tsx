@@ -63,8 +63,9 @@ function GatedStack() {
     preferencesLoading: preferences.isLoading,
     preferences: preferences.data,
     canSyncNow: sync.isOnline && authStatus === 'signed_in',
-    firstSyncSettled:
-      sync.lastSyncedAt !== null || sync.phase === 'error' || sync.phase === 'offline',
+    // Latched (see syncStore): a new sync starting must not send an
+    // onboarding user back to the loading screen and unmount their progress.
+    firstSyncSettled: sync.hasSettled,
   });
 
   const hasDraft = useOnboardingStore((s) => (userId ? Boolean(s.byUser[userId]) : false));

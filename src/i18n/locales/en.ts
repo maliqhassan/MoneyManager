@@ -131,6 +131,11 @@ export const en = {
       firstAccount: 'First account',
       noAccount: 'None yet',
       start: 'Start managing my money',
+      serverNotReady:
+        'Your account is set up, but the server database isn’t ready yet. Your choices and first account are saved on this device. Please try again after the server setup is finished.',
+      sessionExpired:
+        'Your session has expired. Sign in again to finish — your choices are saved on this device.',
+      tryAgain: 'Try again',
       needsConnection:
         'Connect to the internet to finish setting up. Your choices are saved on this device.',
     },
@@ -1113,6 +1118,8 @@ export const en = {
     rate_limited: 'Too many attempts. Please wait a moment and try again.',
     storage: "We couldn't access storage on this device.",
     config: 'The app is not configured correctly.',
+    server_not_ready:
+      'The server isn’t ready yet. Your data is saved on this device and will sync once it is.',
     auth_invalid_credentials: 'Incorrect email or password.',
     auth_email_not_confirmed: 'Please confirm your email address first. Check your inbox.',
     auth_email_taken: 'An account with this email already exists.',

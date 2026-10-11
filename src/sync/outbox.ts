@@ -133,6 +133,24 @@ export async function resetInFlight(db: SqlExecutor, now: string): Promise<void>
   );
 }
 
+/**
+ * Entries parked as 'failed' because the SERVER was not ready (schema not
+ * deployed: table/column missing) were never the record's fault. They get a
+ * fresh chance on every run; while the server is still not ready the run
+ * halts on the first one without consuming attempts. ('not_found' is how a
+ * push to a missing table was classified before 'server_not_ready' existed;
+ * inserts and version-checked updates never produce it otherwise.)
+ */
+export async function requeueBlockedByServer(db: SqlExecutor, now: string): Promise<number> {
+  const result = await db.run(
+    `UPDATE sync_outbox
+     SET status = 'pending', attempts = 0, next_attempt_at = NULL, updated_at = ?
+     WHERE status = 'failed' AND last_error IN ('server_not_ready', 'not_found')`,
+    [now],
+  );
+  return result.changes;
+}
+
 /** Exponential backoff with full jitter: 5s · 2^attempts, capped at 30 minutes. */
 export function nextBackoffMs(attempts: number, random: () => number = Math.random): number {
   const base = 5_000 * 2 ** Math.min(attempts, 12);

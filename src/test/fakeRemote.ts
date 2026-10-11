@@ -13,6 +13,13 @@ export class FakeRemote implements RemoteDataSource {
   failNextWrites: { count: number; error: unknown } | null = null;
   /** Apply the next write but throw afterwards, simulating a lost response. */
   loseNextResponse = false;
+  /**
+   * Every call fails the way the real backend does in that situation:
+   * 'schema_missing' — PostgREST PGRST205 / HTTP 404 (migrations not applied);
+   * 'unauthorized'   — HTTP 401 (expired / missing session);
+   * 'offline'        — fetch TypeError (no network).
+   */
+  outage: 'schema_missing' | 'unauthorized' | 'offline' | null = null;
   calls: string[] = [];
 
   private table(name: string): Map<string, RemoteRow> {
@@ -29,7 +36,24 @@ export class FakeRemote implements RemoteDataSource {
     return new Date(this.clock).toISOString();
   }
 
+  private checkOutage(): void {
+    switch (this.outage) {
+      case 'schema_missing':
+        throw Object.assign(new Error("Could not find the table 'public.x' in the schema cache"), {
+          code: 'PGRST205',
+          status: 404,
+        });
+      case 'unauthorized':
+        throw Object.assign(new Error('JWT expired'), { code: 'PGRST301', status: 401 });
+      case 'offline':
+        throw Object.assign(new TypeError('Network request failed'), { name: 'TypeError' });
+      case null:
+        return;
+    }
+  }
+
   private maybeFail(): void {
+    this.checkOutage();
     if (this.failNextWrites && this.failNextWrites.count > 0) {
       this.failNextWrites.count -= 1;
       throw this.failNextWrites.error;
@@ -83,10 +107,12 @@ export class FakeRemote implements RemoteDataSource {
   }
 
   async fetchById(table: SyncTableName, id: string) {
+    this.checkOutage();
     return this.table(table).get(id) ?? null;
   }
 
   async fetchChanges(table: SyncTableName, since: ChangeCursor | null, limit: number) {
+    this.checkOutage();
     const rows = [...this.table(table).values()].sort((a, b) =>
       a.updated_at === b.updated_at
         ? a.id.localeCompare(b.id)

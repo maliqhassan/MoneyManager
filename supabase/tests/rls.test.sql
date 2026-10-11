@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(50);
+select plan(52);
 
 -- Two users; the sign-up trigger seeds profiles, preferences and categories.
 insert into auth.users (id, email, raw_user_meta_data, aud, role)
@@ -21,6 +21,11 @@ select is(
   (select count(*)::int from public.categories
    where user_id = '22222222-2222-4222-8222-222222222222' and parent_id is not null),
   28, 'default subcategories are nested under their parents');
+select app.initialize_user('22222222-2222-4222-8222-222222222222');
+select is(
+  (select count(*)::int from public.user_preferences where user_id = '22222222-2222-4222-8222-222222222222')
+    + (select count(*)::int from public.profiles where id = '22222222-2222-4222-8222-222222222222'),
+  2, 'user initialization is idempotent (one profile, one preferences row)');
 select app.seed_default_categories('22222222-2222-4222-8222-222222222222');
 select is(
   (select count(*)::int from public.categories where user_id = '22222222-2222-4222-8222-222222222222'),
@@ -244,6 +249,9 @@ select throws_ok($$
   insert into public.savings_goals (id, user_id, name, target_amount_minor, currency)
   values ('bbbbbbbb-0000-4000-8000-000000000034', '11111111-1111-4111-8111-111111111111', 'Not mine', 1, 'USD')
 $$, '42501', null, 'user cannot create goals for someone else');
+
+select throws_ok($$ select app.initialize_user('22222222-2222-4222-8222-222222222222') $$, '42501', null,
+  'clients cannot call server-side user initialization');
 
 -- ---- anonymous ----
 reset role;
