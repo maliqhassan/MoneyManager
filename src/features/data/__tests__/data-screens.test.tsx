@@ -236,6 +236,6 @@ describe('Data screens', () => {
       expect.arrayContaining(['README.txt', 'manifest.json', 'transactions.csv', 'accounts.csv']),
     );
     const manifest = JSON.parse(strFromU8(entries['manifest.json']!)) as Record<string, unknown>;
-    expect(manifest).toMatchObject({ formatVersion: 1, restorable: false });
+    expect(manifest).toMatchObject({ formatVersion: 2, restorable: false });
   });
 });

@@ -4,6 +4,8 @@ import { View } from 'react-native';
 import { Card, Divider, Icon, MoneyText, Text } from '@/components/ui';
 import type { CurrencyCode } from '@/domain/currency/currencies';
 import { type CashFlowSummary, savingsRateBasisPoints } from '@/domain/finance/cashflow';
+import type { ConversionNote } from '@/domain/fx/note';
+import { RateNote } from '@/features/exchangeRates/components/RateNote';
 import { useFormatter } from '@/i18n/FormatContext';
 import { makeStyles } from '@/theme';
 
@@ -12,10 +14,13 @@ export function CashFlowCard({
   period,
   summary,
   missingRates,
+  fx,
 }: {
   period: { start: string; end: string };
   summary: CashFlowSummary | null;
   missingRates: readonly CurrencyCode[];
+  /** What converted amounts are based on (same policy as Reports). */
+  fx?: ConversionNote;
 }) {
   const { t } = useTranslation();
   const styles = useStyles();
@@ -71,6 +76,7 @@ export function CashFlowCard({
             <Text variant="caption" tone="textMuted">
               {t('planning.metricNote')}
             </Text>
+            {fx ? <RateNote note={fx} showMissing={false} /> : null}
           </>
         ) : (
           <View style={styles.notice}>
@@ -80,6 +86,7 @@ export function CashFlowCard({
             </Text>
           </View>
         )}
+        {!summary && fx ? <RateNote note={fx} showMissing={false} showManage /> : null}
       </View>
     </Card>
   );

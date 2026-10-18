@@ -34,7 +34,7 @@ import type {
   TransferLegSummary,
 } from '../types';
 import { releaseBillPayments } from './billSchedule';
-import { findRate } from './SqliteExchangeRateRepository';
+import { resolveRate } from './rateResolver';
 import { listTags, resolveTagIds } from './SqliteTagRepository';
 import {
   type AttachmentRow,
@@ -473,7 +473,7 @@ export class SqliteTransactionRepository implements TransactionRepository {
       );
       await this.checkCategories(tx, valid, previousCategories);
       await this.checkRefundLink(tx, valid, id);
-      const row = await this.buildEntryRow(tx, valid, account);
+      const row = await this.keepSnapshot(tx, id, await this.buildEntryRow(tx, valid, account));
       await updateSynced(tx, this.ctx, 'transactions', id, row);
       await this.softDeleteChildren(tx, id, { splits: true, tags: false, attachments: false });
       await this.writeSplits(tx, id, valid, row);
@@ -622,6 +622,48 @@ export class SqliteTransactionRepository implements TransactionRepository {
     this.ctx.onChange('bills');
   }
 
+  /**
+   * Editing anything but the amount, currency or date keeps the conversion
+   * recorded at entry: a rate cached later must not silently rewrite it.
+   */
+  private async keepSnapshot(
+    tx: SqlExecutor,
+    id: string,
+    row: Record<string, SqlValue>,
+  ): Promise<Record<string, SqlValue>> {
+    const old = await tx.getFirst<{
+      amount_minor: number;
+      currency: string;
+      local_date: string;
+      base_currency: string;
+      base_amount_minor: number;
+      base_fx_rate: string;
+      base_fx_rate_date: string;
+      base_fx_source: string;
+    }>(
+      `SELECT amount_minor, currency, local_date, base_currency, base_amount_minor, base_fx_rate,
+              base_fx_rate_date, base_fx_source
+       FROM transactions WHERE id = ? AND user_id = ?`,
+      [id, this.ctx.userId],
+    );
+    if (
+      !old ||
+      old.amount_minor !== row.amount_minor ||
+      old.currency !== row.currency ||
+      old.local_date !== row.local_date
+    ) {
+      return row;
+    }
+    return {
+      ...row,
+      base_currency: old.base_currency,
+      base_amount_minor: old.base_amount_minor,
+      base_fx_rate: old.base_fx_rate,
+      base_fx_rate_date: old.base_fx_rate_date,
+      base_fx_source: old.base_fx_source,
+    };
+  }
+
   private async requireTransaction(tx: SqlExecutor, id: string): Promise<TransactionRow> {
     const row = await tx.getFirst<TransactionRow>(
       `SELECT * FROM transactions WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
@@ -692,9 +734,12 @@ export class SqliteTransactionRepository implements TransactionRepository {
   }
 
   /**
-   * Base-currency snapshot at entry. If no rate is known, the amount is kept
-   * in its own currency and marked 'unconverted' — reports then convert it
-   * later or report the missing rate; nothing is guessed.
+   * Base-currency snapshot at entry, using the rate for the entry's date
+   * (historical policy). It records the rate actually used, its own date and
+   * source (e.g. "frankfurter", "manual", "frankfurter:cross"). If no rate is
+   * known the amount is kept in its own currency and marked 'unconverted' —
+   * reports then convert it later or report the missing rate; nothing is
+   * guessed, and a later rate never rewrites this snapshot.
    */
   private async snapshot(
     tx: SqlExecutor,
@@ -707,7 +752,7 @@ export class SqliteTransactionRepository implements TransactionRepository {
     );
     const base = prefs?.base_currency ?? amount.currency;
     if (base === amount.currency) return createBaseCurrencySnapshot(amount, base, null, localDate);
-    const rate = await findRate(tx, amount.currency, base, localDate);
+    const rate = await resolveRate(tx, amount.currency, base, localDate, 'historical');
     if (!rate) {
       return {
         baseCurrency: amount.currency,
@@ -717,10 +762,11 @@ export class SqliteTransactionRepository implements TransactionRepository {
         baseFxSource: 'unconverted',
       };
     }
+    const source = rate.derivation === 'direct' ? rate.source : `${rate.source}:${rate.derivation}`;
     return createBaseCurrencySnapshot(
       amount,
       base,
-      { rate, rateDate: localDate, source: 'local_rates' },
+      { rate: rate.rate, rateDate: rate.rateDate, source: source.slice(0, 64) },
       localDate,
     );
   }
@@ -920,8 +966,20 @@ export class SqliteTransactionRepository implements TransactionRepository {
       await insertSynced(tx, this.ctx, 'transactions', ids.outgoingId, outgoingRow);
       await insertSynced(tx, this.ctx, 'transactions', ids.incomingId, incomingRow);
     } else {
-      await updateSynced(tx, this.ctx, 'transactions', ids.outgoingId, outgoingRow);
-      await updateSynced(tx, this.ctx, 'transactions', ids.incomingId, incomingRow);
+      await updateSynced(
+        tx,
+        this.ctx,
+        'transactions',
+        ids.outgoingId,
+        await this.keepSnapshot(tx, ids.outgoingId, outgoingRow),
+      );
+      await updateSynced(
+        tx,
+        this.ctx,
+        'transactions',
+        ids.incomingId,
+        await this.keepSnapshot(tx, ids.incomingId, incomingRow),
+      );
     }
   }
 

@@ -6,6 +6,7 @@ import { Button, EmptyState, LoadingState, Screen, ToastHost } from '@/component
 import { resolveAppGate } from '@/features/onboarding/model';
 import { useOnboardingStore } from '@/features/onboarding/store';
 import { usePreferences } from '@/features/settings/hooks/usePreferences';
+import { useRateRefresh } from '@/features/exchangeRates/useRateRefresh';
 import { useSyncScheduler } from '@/hooks/useSyncScheduler';
 import { DataProvider, useData } from '@/providers/DataProvider';
 import { FormatProvider } from '@/providers/FormatProvider';
@@ -38,6 +39,7 @@ export default function AppLayout() {
 
 function SyncScheduler() {
   useSyncScheduler();
+  useRateRefresh();
   return null;
 }
 
@@ -195,6 +197,14 @@ function GatedStack() {
         <Stack.Screen
           name="goals/[id]/contribute"
           options={{ title: t('goals.contribution.add'), presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="settings/exchange-rates"
+          options={{ title: t('exchangeRates.title') }}
+        />
+        <Stack.Screen
+          name="settings/manual-rate"
+          options={{ title: t('exchangeRates.manual.title'), presentation: 'modal' }}
         />
         <Stack.Screen name="data/import" options={{ title: t('dataImport.title') }} />
         <Stack.Screen name="data/export" options={{ title: t('dataExport.title') }} />

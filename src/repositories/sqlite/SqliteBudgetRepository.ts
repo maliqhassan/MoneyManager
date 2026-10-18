@@ -16,7 +16,7 @@ import { AppError } from '@/lib/errors';
 import { type BudgetInput, budgetInputSchema, type ValidBudgetInput } from '@/validation/planning';
 
 import type { BudgetListItem, BudgetRepository, BudgetSpendingLine } from '../types';
-import { Converter } from './fx';
+import { Converter, perEntryKey, resolveInCurrency } from './fx';
 import { type CategoryRow, toCategory } from './mappers';
 import {
   type BudgetRevisionRow,
@@ -368,16 +368,15 @@ export class SqliteBudgetRepository implements BudgetRepository {
        LEFT JOIN transaction_splits s
          ON s.transaction_id = t.id AND s.deleted_at IS NULL AND t.is_split = 1
        WHERE ${this.spendingWhere(categories)}
-       GROUP BY t.local_date, t.currency, t.base_currency, t.base_fx_source`,
-      [this.ctx.userId, from, to, ...(categories ?? [])],
+       GROUP BY t.local_date, t.currency, t.base_currency, t.base_fx_source,
+                ${perEntryKey('COALESCE(s.id, t.id)')}`,
+      [this.ctx.userId, from, to, ...(categories ?? []), budget.currency, budget.currency],
     );
     const days: DailySpend[] = [];
     for (const r of rows) {
-      let amount: number | null;
-      if (r.currency === budget.currency) amount = r.amount;
-      else if (r.base_currency === budget.currency && r.base_fx_source !== 'unconverted') {
-        amount = r.base; // the conversion recorded when the transaction was entered
-      } else amount = await converter.convert(r.amount, r.currency, budget.currency, r.local_date);
+      // Native amount, else the conversion recorded at entry, else the rate
+      // on the entry's date (same policy as Reports).
+      const amount = await resolveInCurrency(converter, r, budget.currency);
       // Postings are signed from the account's view: expenses < 0, refunds > 0.
       if (amount !== null) days.push({ localDate: r.local_date, spentMinor: -amount });
     }
@@ -431,6 +430,7 @@ export class SqliteBudgetRepository implements BudgetRepository {
       category: categoryRow ? toCategory(categoryRow) : null,
       evaluation,
       missingRates: converter.missingList(),
+      fx: converter.note(budget.currency),
     };
   }
 

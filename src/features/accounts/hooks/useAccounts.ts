@@ -3,7 +3,8 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import type { CurrencyCode } from '@/domain/currency/currencies';
 import { buildAccountsOverview } from '@/domain/accounts/accounts';
 import type { Account } from '@/domain/models';
-import type { DecimalString } from '@/domain/money/decimal';
+import { ConversionNoteBuilder } from '@/domain/fx/note';
+import type { ResolvedRate } from '@/domain/fx/policy';
 import { useFormatter } from '@/i18n/FormatContext';
 import { queryKeys } from '@/lib/queryClient';
 import { useRepositories } from '@/providers/DataProvider';
@@ -61,15 +62,27 @@ export function useAccountsOverview() {
         repos.accounts.list({ includeArchived: true }),
         repos.accounts.getBalances(),
       ]);
-      const currencies = [...new Set(list.map((a) => a.currency))].filter((c) => c !== base);
-      const rates = new Map<CurrencyCode, DecimalString | null>();
-      await Promise.all(
-        currencies.map(async (c) =>
-          rates.set(c, await repos.exchangeRates.findRate(c, base, today)),
-        ),
-      );
+      // Today's value: latest cached rate (labelled stale when old).
+      const currencies = [
+        ...new Set(list.filter((a) => !a.isArchived && a.includeInTotals).map((a) => a.currency)),
+      ].filter((c) => c !== base);
+      const rates = new Map<CurrencyCode, ResolvedRate | null>();
+      for (const c of currencies) {
+        rates.set(c, await repos.exchangeRates.resolve(c, base, today, 'current'));
+      }
       const balanceMap = new Map(balances.map((b) => [b.accountId, b.balance]));
-      return buildAccountsOverview<Account>(list, balanceMap, base, (c) => rates.get(c) ?? null);
+      const overview = buildAccountsOverview<Account>(
+        list,
+        balanceMap,
+        base,
+        (c) => rates.get(c)?.rate ?? null,
+      );
+      const note = new ConversionNoteBuilder(base);
+      for (const [c, r] of rates) {
+        if (r) note.addRate(c, r);
+        else note.addMissing(c);
+      }
+      return { ...overview, fx: note.build() };
     },
   });
 }

@@ -28,7 +28,7 @@ export function createRepositories(db: SqlDatabase, ctx: RepositoryContext): Rep
   return {
     accounts: new SqliteAccountRepository(db, ctx),
     preferences: new SqlitePreferencesRepository(db, ctx),
-    exchangeRates: new SqliteExchangeRateRepository(db),
+    exchangeRates: new SqliteExchangeRateRepository(db, ctx),
     categories: new SqliteCategoryRepository(db, ctx),
     categoryRules: new SqliteCategoryRuleRepository(db, ctx),
     tags: new SqliteTagRepository(db, ctx),

@@ -113,12 +113,32 @@ objects for deleted receipts before account deletion.
 - New dependencies: `expo-document-picker`, `expo-sharing`, `fflate` (ZIP,
   pure JS). No migration.
 
-## Next — Multi-currency rates
+## Phase 6 — Exchange rates & multi-currency ✅
 
-- `exchange-rates` Edge Function (scheduled) populating `exchange_rates`.
-- Manual rate override; totals across currencies on Home.
-- Until then, conversions use whatever rates are in the local cache and
-  anything without a rate is reported as incomplete.
+- Provider interface (`services/fx`) with Frankfurter v2 (no key; blended
+  central-bank reference rates; all 94 app currencies; history). Foreground,
+  throttled refresh (12 h; 15 min after failure; Retry-After), forward fill +
+  bounded backfill of the dates entries need.
+- Exact conversion: rates validated decimal strings read from the raw JSON;
+  derived (inverse / cross via USD) rates rounded once to 12 significant
+  digits; amounts converted per entry, rounded once (half away from zero).
+- Historical policy (rate on the entry date, ≤ 7 days old; manual ≤ 31) for
+  snapshots, reports, budgets and goals; current policy (latest, labelled
+  stale) for combined balances and subscription estimates.
+- Snapshots are never rewritten by later rates; editing non-financial fields
+  keeps them; transfers keep the amounts entered.
+- More → Exchange rates: per-currency value, source, date, staleness, refresh
+  status and attribution; manual rates with review step. Every converted total
+  shows its basis; drill-downs reconcile in the base currency.
+- CSV export format v2 (`base_fx_rate`, `base_fx_rate_date`,
+  `exchange_rates.csv`). Local migration 5 only — no Supabase migration.
+
+## Next — Exchange-rate follow-ups
+
+- Sync manual rates across devices (`user_exchange_rates` table with RLS —
+  needs a Supabase migration; proposed, not applied).
+- Optional server-side cache (scheduled Edge Function writing
+  `exchange_rates`) to reduce per-device downloads.
 
 ## Later — Notifications
 

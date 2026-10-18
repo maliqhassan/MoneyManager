@@ -20,6 +20,7 @@ import { addMonths } from '@/domain/dates/calendar';
 import { CategoryIcon } from '@/features/categories/components/CategoryIcon';
 import { useGoal, useGoalMutations } from '@/features/goals/hooks';
 import { confirmAction, toastSaved } from '@/features/planning/feedback';
+import { RateNote } from '@/features/exchangeRates/components/RateNote';
 import { useFormatter } from '@/i18n/FormatContext';
 import { makeStyles, useTheme } from '@/theme';
 
@@ -125,6 +126,11 @@ export default function GoalDetailScreen() {
           </Text>
         </View>
       ) : null}
+      <RateNote
+        note={item.fx}
+        policy={t('exchangeRates.note.atContribution')}
+        showMissing={false}
+      />
 
       {!archived ? (
         <Button

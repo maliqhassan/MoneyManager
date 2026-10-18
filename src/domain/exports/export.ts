@@ -18,7 +18,8 @@ import { money, toMajorString } from '../money/money';
  *   never run them as formulas. Numbers, dates and ids are never altered.
  */
 
-export const EXPORT_FORMAT_VERSION = 1;
+/** v2 (Phase 6): base_fx_rate / base_fx_rate_date columns and exchange_rates.csv. */
+export const EXPORT_FORMAT_VERSION = 2;
 
 export type ExportValue = string | number | boolean | null;
 
@@ -72,6 +73,8 @@ export const TRANSACTION_COLUMNS: readonly ExportColumn[] = [
   col('currency'),
   col('base_amount'),
   col('base_currency'),
+  col('base_fx_rate'),
+  col('base_fx_rate_date'),
   col('base_conversion'),
   col('account', true),
   col('account_id'),
@@ -187,6 +190,16 @@ export const GOAL_COLUMNS: readonly ExportColumn[] = [
   col('status'),
 ];
 
+/** The user's own (manual) exchange rates: 1 from_currency = rate to_currency. */
+export const EXCHANGE_RATE_COLUMNS: readonly ExportColumn[] = [
+  col('from_currency'),
+  col('to_currency'),
+  col('rate'),
+  col('effective_date'),
+  col('source'),
+  col('entered_at_utc'),
+];
+
 export const GOAL_CONTRIBUTION_COLUMNS: readonly ExportColumn[] = [
   col('contribution_id'),
   col('goal_id'),
@@ -253,8 +266,13 @@ export function readmeText(m: ManifestInput): string {
     '  - CSV, UTF-8 (with BOM), comma-separated, RFC 4180 quoting, CRLF line endings.',
     '  - Amounts: exact decimals with "." as separator plus integer minor units and',
     '    the ISO currency code. Signs are from the account’s point of view (money out < 0).',
-    `  - base_amount is the conversion to ${m.baseCurrency} recorded when the entry was saved;`,
-    '    base_conversion "unconverted" means no exchange rate was known.',
+    `  - base_amount is the conversion to ${m.baseCurrency} recorded when the entry was saved,`,
+    '    with the rate used (base_fx_rate: 1 unit of currency = rate units of base_currency),',
+    '    the date of that rate (base_fx_rate_date) and its source (base_conversion:',
+    '    "identity" same currency, "manual" your rate, "frankfurter" reference rates,',
+    '    ":inverse"/":cross" when derived). "unconverted" means no rate was known then.',
+    '    Rounding: once per entry, half away from zero, to the minor unit of the currency.',
+    '  - exchange_rates.csv lists the rates you entered yourself (not downloaded rates).',
     '  - Dates: ISO YYYY-MM-DD local dates; date_display uses your date format;',
     '    occurred_at_utc is the exact instant.',
     "  - Free text starting with = + - @ TAB or CR is prefixed with an apostrophe (')",

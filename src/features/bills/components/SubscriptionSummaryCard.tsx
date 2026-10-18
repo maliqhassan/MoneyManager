@@ -7,6 +7,7 @@ import type { PeriodicCost } from '@/domain/planning/recurrence';
 import { useFormatter } from '@/i18n/FormatContext';
 import type { SubscriptionSummary } from '@/repositories/types';
 import { makeStyles } from '@/theme';
+import { RateNote } from '@/features/exchangeRates/components/RateNote';
 
 /**
  * Monthly and yearly subscription cost. Exact where the schedule allows;
@@ -68,6 +69,7 @@ export function SubscriptionSummaryCard({ summary }: { summary: SubscriptionSumm
             {t('bills.summary.approximate')}
           </Text>
         ) : null}
+        <RateNote note={summary.fx} policy={t('exchangeRates.note.estimate')} showMissing={false} />
       </View>
     </Card>
   );

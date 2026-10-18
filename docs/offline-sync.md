@@ -95,6 +95,16 @@ sent to the server directly and RLS applies as usual. A failed chunk rolls
 back alone; earlier chunks stay committed and a repeat import skips them by
 `import_hash`. The CSV file itself never leaves the device.
 
+## Exchange rates
+
+Rates are reference data, not user records: they live in the device's local
+`exchange_rates` cache and never enter the outbox. A foreground refresh
+(app start, foreground, reconnect; throttled) downloads them from the
+provider; offline, the cache is used and its dates are shown. Snapshots on
+transactions (which do sync) carry the rate actually used, so other devices
+never need the same cache to show the same recorded values. Manual rates are
+device-local for now. See [exchange-rates.md](exchange-rates.md).
+
 ## Receipts (files)
 
 Receipt **rows** (`attachments`) sync through the outbox like any other table.

@@ -10,6 +10,7 @@ import {
   decimalAmount,
   type ExportTable,
   GOAL_COLUMNS,
+  EXCHANGE_RATE_COLUMNS,
   GOAL_CONTRIBUTION_COLUMNS,
   type ManifestInput,
   SPLIT_COLUMNS,
@@ -44,7 +45,7 @@ const bool = (v: number) => v === 1;
  * columns (transfer_id, refund_of_transaction_id, transaction_id, …).
  */
 export async function buildExport(
-  repos: Pick<Repositories, 'exports'>,
+  repos: Pick<Repositories, 'exports' | 'exchangeRates'>,
   o: ExportOptions,
 ): Promise<BuiltExport> {
   const r = repos.exports;
@@ -74,6 +75,8 @@ export async function buildExport(
               ? null
               : decimalAmount(t.base_amount_minor, t.base_currency),
           base_currency: t.base_fx_source === 'unconverted' ? null : t.base_currency,
+          base_fx_rate: t.base_fx_source === 'unconverted' ? null : t.base_fx_rate,
+          base_fx_rate_date: t.base_fx_source === 'unconverted' ? null : t.base_fx_rate_date,
           base_conversion: t.base_fx_source,
           account: t.account_name,
           account_id: t.account_id,
@@ -120,17 +123,27 @@ export async function buildExport(
   }
 
   if (o.scope === 'all') {
-    const [accounts, categories, budgets, revisions, bills, payments, goals, contributions] =
-      await Promise.all([
-        r.accounts(),
-        r.categories(),
-        r.budgets(),
-        r.budgetRevisions(),
-        r.bills(),
-        r.billPayments(),
-        r.goals(),
-        r.goalContributions(),
-      ]);
+    const [
+      accounts,
+      categories,
+      budgets,
+      revisions,
+      bills,
+      payments,
+      goals,
+      contributions,
+      manualRates,
+    ] = await Promise.all([
+      r.accounts(),
+      r.categories(),
+      r.budgets(),
+      r.budgetRevisions(),
+      r.bills(),
+      r.billPayments(),
+      r.goals(),
+      r.goalContributions(),
+      repos.exchangeRates.listManualRates(),
+    ]);
     tables.push(
       {
         file: 'accounts.csv',
@@ -258,6 +271,18 @@ export async function buildExport(
             notes: c.notes,
           };
         }),
+      },
+      {
+        file: 'exchange_rates.csv',
+        columns: EXCHANGE_RATE_COLUMNS,
+        rows: manualRates.map((m) => ({
+          from_currency: m.base,
+          to_currency: m.quote,
+          rate: m.rate,
+          effective_date: m.rateDate,
+          source: 'manual',
+          entered_at_utc: m.enteredAt,
+        })),
       },
     );
   }

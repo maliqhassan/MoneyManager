@@ -42,11 +42,16 @@ export function useCashFlowReport(period: ResolvedPeriod) {
       rangeKey(period.previous),
     ],
     queryFn: async () => {
-      const [current, previous] = await Promise.all([
+      const [current, previous, fx] = await Promise.all([
         reports.flows(period.range, base),
         reports.flows(period.previous, base),
+        reports.conversionNote(period.range, base),
       ]);
-      return { current: summarizeFlows(current, base), previous: summarizeFlows(previous, base) };
+      return {
+        current: summarizeFlows(current, base),
+        previous: summarizeFlows(previous, base),
+        fx,
+      };
     },
   });
 }
@@ -166,17 +171,21 @@ export function useBudgetVsActual(range: DateRange) {
 
 export function useReportLines(query: ReportLineQuery) {
   const { reports } = useRepositories();
+  const base = useFormatter().settings.baseCurrency;
   return useQuery({
     queryKey: [
       'transactions',
       'reports',
       'lines',
+      base,
       query.kind,
       query.categoryId ?? '',
       query.includeSubcategories ?? false,
       query.merchantKey ?? '',
       rangeKey(query.range),
     ],
-    queryFn: () => reports.lines(query),
+    // Each line also gets its value in the base currency, by the same
+    // policy as the report totals, so a drill-down adds up to its figure.
+    queryFn: () => reports.lines({ ...query, base }),
   });
 }

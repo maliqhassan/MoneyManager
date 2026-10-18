@@ -65,7 +65,7 @@ describe('export tables', () => {
     };
     const json = JSON.parse(manifestJson(m)) as Record<string, unknown>;
     expect(json).toMatchObject({
-      formatVersion: 1,
+      formatVersion: 2,
       containsUnsyncedChanges: true,
       attachmentsIncluded: false,
       restorable: false,

@@ -39,6 +39,7 @@ import {
   useMonthlyTrend,
 } from '@/features/reports/hooks';
 import { useReportPeriod } from '@/features/reports/periodStore';
+import { RateNote } from '@/features/exchangeRates/components/RateNote';
 import { useFormatter } from '@/i18n/FormatContext';
 import { makeStyles, useTheme } from '@/theme';
 
@@ -192,6 +193,7 @@ function CashFlowSection() {
                   {t('reports.cashFlow.transactions', { count: c.transactionCount })}
                 </Text>
                 <ExcludedNote excluded={[...c.excludedIncome, ...c.excludedSpending]} />
+                <RateNote note={query.data.fx} showMissing={false} />
                 <Text variant="caption" tone="textMuted">
                   {t('reports.cashFlow.savingsNote')}
                 </Text>

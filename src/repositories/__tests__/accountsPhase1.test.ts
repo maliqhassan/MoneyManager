@@ -192,7 +192,7 @@ describe('accounts — Phase 1 behaviour', () => {
       currency: 'EUR',
       openingBalanceMinor: 240_000,
     });
-    const rates = new SqliteExchangeRateRepository(db);
+    const rates = new SqliteExchangeRateRepository(db, createTestContext());
     const accounts = await repo.list({ includeArchived: true });
     const balances = new Map((await repo.getBalances()).map((b) => [b.accountId, b.balance]));
 
@@ -214,7 +214,7 @@ describe('SqliteExchangeRateRepository', () => {
 
   beforeEach(async () => {
     db = await createMigratedTestDatabase();
-    rates = new SqliteExchangeRateRepository(db);
+    rates = new SqliteExchangeRateRepository(db, createTestContext());
     const insert = (id: string, base: string, quote: string, rate: string, date: string) =>
       db.run(
         `INSERT INTO exchange_rates (id, base_currency, quote_currency, rate, rate_date, source, created_at)
@@ -229,11 +229,21 @@ describe('SqliteExchangeRateRepository', () => {
 
   it('returns the latest rate on or before the date', async () => {
     expect(await rates.findRate('EUR', 'USD', '2026-10-04')).toBe('1.08');
-    expect(await rates.findRate('EUR', 'USD', '2026-10-31')).toBe('1.09');
+    expect(await rates.findRate('EUR', 'USD', '2026-10-12')).toBe('1.09');
   });
 
   it('uses the inverse quote when needed', async () => {
-    expect(await rates.findRate('USD', 'GBP', '2026-10-31')).toBe('0.8');
+    expect(await rates.findRate('USD', 'GBP', '2026-10-12')).toBe('0.8');
+  });
+
+  it('never applies an old rate to a later entry, but shows it (stale) as the current value', async () => {
+    // Historical policy: at most 7 days older than the entry date.
+    expect(await rates.findRate('EUR', 'USD', '2026-10-13')).toBeNull();
+    expect(await rates.resolve('EUR', 'USD', '2026-10-31', 'current')).toMatchObject({
+      rate: '1.09',
+      rateDate: '2026-10-05',
+      stale: true,
+    });
   });
 
   it('never guesses: unknown pairs and dates before any rate are null', async () => {

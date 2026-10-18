@@ -17,6 +17,8 @@ export interface ExportTransactionRow {
   currency: CurrencyCode;
   base_amount_minor: number;
   base_currency: CurrencyCode;
+  base_fx_rate: string;
+  base_fx_rate_date: string;
   base_fx_source: string;
   account_id: string;
   account_name: string;
@@ -71,7 +73,8 @@ export class SqliteExportRepository {
     const { where, params } = this.transactionWhere(filter);
     return this.db.getAll<ExportTransactionRow>(
       `SELECT t.id, t.local_date, t.occurred_at, t.time_zone, t.type, t.amount_minor, t.currency,
-              t.base_amount_minor, t.base_currency, t.base_fx_source, t.account_id,
+              t.base_amount_minor, t.base_currency, t.base_fx_rate, t.base_fx_rate_date,
+              t.base_fx_source, t.account_id,
               a.name AS account_name, t.category_id, c.name AS category_name,
               c.system_key AS category_system_key, p.name AS parent_name,
               p.system_key AS parent_system_key, t.payee, t.notes,

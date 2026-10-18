@@ -1,4 +1,4 @@
-import type { RepositoryContext } from '@/repositories/sqlite/shared';
+import type { LocalTableName, RepositoryContext } from '@/repositories/sqlite/shared';
 import type { SyncTableName } from '@/sync/registry';
 
 export const TEST_USER_ID = '7d4f4f0c-3c7e-4c1e-9a54-2f7b1d1c9a01';
@@ -23,8 +23,8 @@ export function steppingClock(start = '2026-10-07T09:00:00.000Z'): () => string 
 
 export function createTestContext(
   overrides: Partial<RepositoryContext> = {},
-): RepositoryContext & { changes: SyncTableName[] } {
-  const changes: SyncTableName[] = [];
+): RepositoryContext & { changes: (SyncTableName | LocalTableName)[] } {
+  const changes: (SyncTableName | LocalTableName)[] = [];
   return {
     userId: TEST_USER_ID,
     newId: sequentialIds(),

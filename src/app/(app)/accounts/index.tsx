@@ -95,6 +95,7 @@ export default function AccountsScreen() {
         totals={data.totals}
         missingRates={data.missingRates}
         accountCount={data.activeCount}
+        fx={data.fx}
       />
 
       {data.groups.map(({ group, items }) => (

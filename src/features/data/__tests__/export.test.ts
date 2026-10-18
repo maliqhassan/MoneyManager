@@ -155,6 +155,10 @@ describe('export builder (real SQLite)', () => {
       amountMinor: 50_000,
     });
     await L.repos.goals.create({ name: 'Trip', targetAmountMinor: 100_000, currency: 'EUR' });
+    await L.repos.exchangeRates.saveManualRate(
+      { base: 'EUR', quote: 'PKR', rate: '310.5', rateDate: '2026-10-05' },
+      { today: '2026-10-08', replace: false },
+    );
     const built = await buildExport(L.repos, options({ scope: 'all' }));
     expect(built.tables.map((t) => t.file)).toEqual([
       'transactions.csv',
@@ -167,6 +171,20 @@ describe('export builder (real SQLite)', () => {
       'bill_payments.csv',
       'savings_goals.csv',
       'goal_contributions.csv',
+      'exchange_rates.csv',
+    ]);
+    // The user's own rates are exported (downloaded reference rates are not).
+    const fx = parseCsv(renderTable(built.tables.find((t) => t.file === 'exchange_rates.csv')!));
+    expect(fx.headers).toEqual([
+      'from_currency',
+      'to_currency',
+      'rate',
+      'effective_date',
+      'source',
+      'entered_at_utc',
+    ]);
+    expect(fx.records.map((r) => r.cells.slice(0, 5))).toEqual([
+      ['EUR', 'PKR', '310.5', '2026-10-05', 'manual'],
     ]);
     const accounts = parseCsv(renderTable(built.tables.find((t) => t.file === 'accounts.csv')!));
     expect(column(accounts, 'current_balance')).toEqual(['969.00', '60.00']);
@@ -181,5 +199,32 @@ describe('export builder (real SQLite)', () => {
     expect(everything).not.toMatch(/eyJ[A-Za-z0-9_-]{10,}/); // JWT-shaped tokens
     expect(everything).not.toMatch(/"(access|refresh)_token"\s*:/);
     expect(everything).not.toContain(L.ctx.userId);
+  });
+  it('exports the conversion recorded with each entry so it can be reproduced', async () => {
+    await L.repos.exchangeRates.storeProviderRates(
+      [{ base: 'USD', quote: 'EUR', rateDate: '2026-10-04', rate: '0.8' }],
+      { source: 'frankfurter', attribution: 'Frankfurter', fetchedAt: '2026-10-04T10:00:00Z' },
+    );
+    await L.repos.transactions.create({
+      type: 'expense',
+      accountId: eur.id,
+      amountMinor: 1_000,
+      localDate: '2026-10-05',
+      localTime: '09:30',
+      timeZone: TZ,
+      categoryId: L.cat.groceries,
+    });
+    const csv = (await table(
+      options({
+        filter: { from: '2026-10-05', to: '2026-10-05', accountIds: [eur.id], types: [] },
+      }),
+    ))!;
+    expect(csv.headers).toEqual(expect.arrayContaining(['base_fx_rate', 'base_fx_rate_date']));
+    expect(column(csv, 'amount')).toEqual(['-10.00']);
+    expect(column(csv, 'currency')).toEqual(['EUR']);
+    expect(column(csv, 'base_amount')).toEqual(['-12.50']);
+    expect(column(csv, 'base_fx_rate')).toEqual(['1.25']);
+    expect(column(csv, 'base_fx_rate_date')).toEqual(['2026-10-04']);
+    expect(column(csv, 'base_conversion')).toEqual(['frankfurter:inverse']);
   });
 });

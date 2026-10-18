@@ -56,7 +56,9 @@ describe('Phase 2 → Phase 3 local migration', () => {
     );
 
     expect(await migrate(db)).toBe(LATEST_SCHEMA_VERSION);
-    expect(await db.getFirst(`PRAGMA user_version`)).toEqual({ user_version: 4 });
+    expect(await db.getFirst(`PRAGMA user_version`)).toEqual({
+      user_version: LATEST_SCHEMA_VERSION,
+    });
     expect(await db.getFirst(`SELECT anchor_date, end_date, autopay FROM bills`)).toEqual({
       anchor_date: '2026-10-31',
       end_date: null,

@@ -3,6 +3,8 @@ import { View } from 'react-native';
 
 import { Card, Divider, Icon, MoneyText, Text } from '@/components/ui';
 import type { CurrencyCode } from '@/domain/currency/currencies';
+import type { ConversionNote } from '@/domain/fx/note';
+import { RateNote } from '@/features/exchangeRates/components/RateNote';
 import type { Money } from '@/domain/money/money';
 import { makeStyles } from '@/theme';
 
@@ -11,6 +13,8 @@ export interface TotalBalanceCardProps {
   totals: readonly Money[];
   missingRates: readonly CurrencyCode[];
   accountCount: number;
+  /** Rates behind the combined total (latest cached rates). */
+  fx?: ConversionNote;
 }
 
 /**
@@ -23,6 +27,7 @@ export function TotalBalanceCard({
   totals,
   missingRates,
   accountCount,
+  fx,
 }: TotalBalanceCardProps) {
   const { t } = useTranslation();
   const styles = useStyles();
@@ -68,6 +73,9 @@ export function TotalBalanceCard({
               </View>
             ))}
           </>
+        ) : null}
+        {fx ? (
+          <RateNote note={fx} policy={t('exchangeRates.note.estimate')} showMissing={false} />
         ) : null}
         <Text variant="bodySmall" tone="textSecondary">
           {t('home.accountsCount', { count: accountCount })}

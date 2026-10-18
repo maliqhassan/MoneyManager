@@ -7,13 +7,18 @@ import type {
   FlowType,
   MerchantSpendRow,
 } from '@/domain/reports/aggregate';
+import type { ConversionBasis, ConversionNote } from '@/domain/fx/note';
 import type { DateRange } from '@/domain/reports/periods';
 import type { SqlDatabase, SqlValue } from '@/database/types';
 
 import type { ReportLine, ReportLineQuery, ReportRepository } from '../types';
-import { Converter, resolveInCurrency, type StoredAmount } from './fx';
+import { Converter, perEntryKey, resolveInCurrency, type StoredAmount } from './fx';
 
 const placeholders = (n: number) => Array.from({ length: n }, () => '?').join(', ');
+
+/** Per-entry (or per split line) grouping for amounts that need a rate. */
+const LINE_KEY = perEntryKey('COALESCE(s.id, t.id)');
+const ENTRY_KEY = perEntryKey('id', 'transactions');
 
 /** Split lines (when present) instead of their parent; each entry counted once. */
 const SPLIT_JOIN = `LEFT JOIN transaction_splits s
@@ -45,8 +50,8 @@ export class SqliteReportRepository implements ReportRepository {
        FROM transactions
        WHERE user_id = ? AND deleted_at IS NULL AND type IN ('income', 'expense', 'refund')
          AND local_date >= ? AND local_date <= ?
-       GROUP BY local_date, type, currency, base_currency, base_fx_source`,
-      [this.userId, range.start, range.end],
+       GROUP BY local_date, type, currency, base_currency, base_fx_source, ${ENTRY_KEY}`,
+      [this.userId, range.start, range.end, base, base],
     );
     const converter = new Converter(this.db);
     const out: FlowRow[] = [];
@@ -70,8 +75,9 @@ export class SqliteReportRepository implements ReportRepository {
        FROM transactions t ${SPLIT_JOIN}
        WHERE t.user_id = ? AND t.deleted_at IS NULL AND t.type IN ('expense', 'refund')
          AND t.local_date >= ? AND t.local_date <= ?
-       GROUP BY t.local_date, ${LINE_CATEGORY}, t.currency, t.base_currency, t.base_fx_source`,
-      [this.userId, range.start, range.end],
+       GROUP BY t.local_date, ${LINE_CATEGORY}, t.currency, t.base_currency, t.base_fx_source,
+                ${LINE_KEY}`,
+      [this.userId, range.start, range.end, base, base],
     );
     const converter = new Converter(this.db);
     const out: CategorySpendRow[] = [];
@@ -95,8 +101,9 @@ export class SqliteReportRepository implements ReportRepository {
        FROM transactions
        WHERE user_id = ? AND deleted_at IS NULL AND type IN ('expense', 'refund')
          AND local_date >= ? AND local_date <= ?
-       GROUP BY local_date, NULLIF(merchant_key, ''), currency, base_currency, base_fx_source`,
-      [this.userId, range.start, range.end],
+       GROUP BY local_date, NULLIF(merchant_key, ''), currency, base_currency, base_fx_source,
+                ${ENTRY_KEY}`,
+      [this.userId, range.start, range.end, base, base],
     );
     const converter = new Converter(this.db);
     const out: MerchantSpendRow[] = [];
@@ -110,6 +117,23 @@ export class SqliteReportRepository implements ReportRepository {
       });
     }
     return out;
+  }
+
+  async conversionNote(range: DateRange, base: CurrencyCode): Promise<ConversionNote> {
+    // The same rows and policy as flows(), so the note describes exactly
+    // what the totals summed.
+    const rows = await this.db.getAll<StoredAmount>(
+      `SELECT local_date, currency, base_currency, base_fx_source,
+              SUM(amount_minor) AS amount, SUM(base_amount_minor) AS base
+       FROM transactions
+       WHERE user_id = ? AND deleted_at IS NULL AND type IN ('income', 'expense', 'refund')
+         AND local_date >= ? AND local_date <= ?
+       GROUP BY local_date, currency, base_currency, base_fx_source, ${ENTRY_KEY}`,
+      [this.userId, range.start, range.end, base, base],
+    );
+    const converter = new Converter(this.db);
+    for (const r of rows) await resolveInCurrency(converter, r, base);
+    return converter.note(base);
   }
 
   async merchantNames(keys: readonly string[]): Promise<Record<string, string>> {
@@ -230,12 +254,17 @@ export class SqliteReportRepository implements ReportRepository {
       category_system_key: string | null;
       amount: number;
       currency: CurrencyCode;
+      base: number;
+      base_currency: CurrencyCode;
+      base_fx_source: string;
       split_line: number;
     }>(
       `SELECT t.id, t.type, t.payee, t.local_date, a.name AS account_name,
               ${useSplits ? LINE_CATEGORY : 't.category_id'} AS category_id,
               c.name AS category_name, c.system_key AS category_system_key,
               ${useSplits ? LINE_AMOUNT : 't.amount_minor'} AS amount, t.currency,
+              ${useSplits ? LINE_BASE : 't.base_amount_minor'} AS base, t.base_currency,
+              t.base_fx_source,
               ${useSplits ? 's.id IS NOT NULL' : '0'} AS split_line
        FROM transactions t
        JOIN accounts a ON a.id = t.account_id
@@ -246,7 +275,41 @@ export class SqliteReportRepository implements ReportRepository {
        LIMIT 1000`,
       params,
     );
-    return rows.map((r) => ({
+    const converter = new Converter(this.db);
+    const out: ReportLine[] = [];
+    for (const r of rows) {
+      let baseMinor: number | null | undefined;
+      let basis: ConversionBasis | undefined;
+      if (query.base) {
+        if (r.currency === query.base) basis = 'native';
+        else if (r.base_currency === query.base && r.base_fx_source !== 'unconverted') {
+          basis = 'snapshot';
+        }
+        baseMinor = await resolveInCurrency(converter, r, query.base);
+        basis ??= baseMinor === null ? 'missing' : 'rate';
+      }
+      out.push({
+        ...this.line(r),
+        ...(query.base ? { baseMinor, basis } : {}),
+      });
+    }
+    return out;
+  }
+
+  private line(r: {
+    id: string;
+    type: 'income' | 'expense' | 'refund';
+    payee: string | null;
+    local_date: string;
+    account_name: string;
+    category_id: string | null;
+    category_name: string | null;
+    category_system_key: string | null;
+    amount: number;
+    currency: CurrencyCode;
+    split_line: number;
+  }): ReportLine {
+    return {
       transactionId: r.id,
       type: r.type,
       payee: r.payee,
@@ -258,7 +321,7 @@ export class SqliteReportRepository implements ReportRepository {
       amountMinor: r.amount,
       currency: r.currency,
       isSplitLine: r.split_line === 1,
-    }));
+    };
   }
 
   private async withSubcategories(id: string, include: boolean): Promise<string[]> {

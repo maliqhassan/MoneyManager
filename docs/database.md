@@ -65,7 +65,7 @@ account by guessing its id.
 | `attachments` | Receipt metadata; file in private `attachments` bucket under `<user_id>/…`. |
 | `import_batches`, `import_rows` | CSV import pipeline: mapping, preview, duplicates, errors. |
 | `notifications` | In-app notification records. |
-| `exchange_rates` | Reference data; readable by users, written only by service role. |
+| `exchange_rates` | Server: reference data, readable by users, written only by service role (no writer yet). Local: the device's rate cache — provider rows and the user's manual rates (see [exchange-rates.md](exchange-rates.md)); not synced. |
 
 The "SyncEvent" concept is the local `sync_outbox` (plus `sync_cursors` and
 `sync_conflicts`); see [offline-sync.md](offline-sync.md).
@@ -89,11 +89,13 @@ Each transaction preserves:
 | `original_amount_minor`, `original_currency` | `-2000`, `EUR` — as entered, never overwritten |
 | `amount_minor`, `currency`, `fx_rate` | `-2168`, `USD`, `1.084` — what hit the account |
 | `base_amount_minor`, `base_currency` | `-7960`, `AED` |
-| `base_fx_rate`, `base_fx_rate_date`, `base_fx_source` | `3.98`, `2026-10-06`, `ecb` |
+| `base_fx_rate`, `base_fx_rate_date`, `base_fx_source` | `3.98`, `2026-10-06`, `frankfurter:cross` — the rate used, its own date and source |
 
 Changing the base currency later never rewrites history. Reports in a new base
-currency convert from the original/account amounts using `exchange_rates`;
-snapshots remain the record of what was known at entry time.
+currency convert from the original/account amounts using `exchange_rates`
+(the rate for each entry's date — see [exchange-rates.md](exchange-rates.md));
+snapshots remain the record of what was known at entry time, and a later rate
+never rewrites one.
 
 `local_date` (+ `time_zone`) is fixed at entry, so budget periods and reports are
 deterministic regardless of where the user travels later.
@@ -159,6 +161,7 @@ folder, deletes the auth user. All tables cascade from `auth.users`.
 | 2 | `20261008090000_regional_preferences.sql` | `002_regional_preferences.ts` | `region`, `language`, `date_format`, `number_format`, `onboarding_completed_at`; locale/time-zone format checks |
 | 3 | `20261009090000_transactions_categories.sql` | `003_transactions.ts` | `transactions.merchant_key`; local-only `search_text`; list/filter indexes; default category tree (`app.default_categories`, `app.seed_default_categories`, backfill); triggers for category parents, transaction currency and account-currency lock |
 | 4 | `20261010090000_budgets_bills_goals.sql` | `004_planning.ts` | `budgets.category_id`; `budget_revisions` (amount + rollover from an effective date); `bills.anchor_date`, `end_date`, `autopay`; `goal_contributions.currency`, `account_id`, `transfer_id`; triggers for budget category kind and bill currency; backfills without version bumps |
+| 5 | — (local only) | `005_exchange_rates.ts` | Device rate cache: `exchange_rates.kind` (provider/manual), `fetched_at`, `attribution`; local `fx_fetch_log` (refresh throttling, requested ranges). No synced schema changes. |
 
 Deploy order: **apply the Supabase migration before shipping an app build that
 uses it** — the app pushes the new columns, and PostgREST rejects unknown
@@ -179,8 +182,9 @@ columns (such pushes are retried, then parked as failed).
   history and balances, disappear from active lists and totals, and must be
   restored before receiving transactions (`canReceiveTransactions`).
 - Totals are per currency; a combined base-currency total is shown only when
-  every needed rate exists in `exchange_rates` (direct or inverse). Missing
-  rates are reported, never guessed.
+  every needed rate exists in `exchange_rates` (direct, inverse or via USD;
+  the latest cached rate, labelled stale when old). Missing rates are
+  reported, never guessed.
 
 ## Transactions & categories: rules
 
@@ -343,17 +347,20 @@ source CSV is never stored.
   choosing the file again finishes it.
 
 **Export** (`domain/exports`, `features/data/exportBuilder.ts`,
-`SqliteExportRepository`, `services/data/dataFiles.ts`), format version 1:
+`SqliteExportRepository`, `services/data/dataFiles.ts`), format version 2:
 
 - UTF-8 with BOM, CRLF, RFC 4180 quoting. Amounts are exact decimal strings
   plus the currency code and `amount_minor`; dates are ISO `YYYY-MM-DD` plus a
   display column in the user's format.
+- v2 adds `base_fx_rate` and `base_fx_rate_date` next to `base_amount` /
+  `base_conversion`, so each recorded conversion can be reproduced.
 - Free-text cells starting with `=` `+` `-` `@`, tab or CR are prefixed with
   `'` (formula-injection protection). Numeric and ID columns are not altered.
 - Transactions only → one CSV (a ZIP when split details exist). Everything →
   ZIP with `transactions.csv`, `transaction_splits.csv`, `accounts.csv`,
   `categories.csv`, `budgets.csv`, `budget_revisions.csv`, `bills.csv`,
-  `bill_payments.csv`, `goals.csv`, `goal_contributions.csv`, `README.txt`
+  `bill_payments.csv`, `savings_goals.csv`, `goal_contributions.csv`,
+  `exchange_rates.csv` (your manual rates), `README.txt`
   and `manifest.json` (format version, app version, time zone, base
   currency, filters, row counts, unsynced-change count).
 - Transfers keep both legs with `transfer_id` and `transfer_other_account`; refunds

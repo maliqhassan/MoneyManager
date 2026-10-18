@@ -98,6 +98,13 @@ export default function SettingsScreen() {
         />
         <Divider inset={64} />
         <ListItem
+          icon="swap-horizontal-outline"
+          title={t('more.exchangeRates')}
+          subtitle={t('more.exchangeRatesHint')}
+          onPress={() => router.push('/settings/exchange-rates' as Href)}
+        />
+        <Divider inset={64} />
+        <ListItem
           icon="notifications-outline"
           title={t('more.notifications')}
           subtitle={t('more.notificationsHint')}

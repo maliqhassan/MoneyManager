@@ -6,7 +6,6 @@ import type { CurrencyCode } from '@/domain/currency/currencies';
 import type { CategoryKind } from '@/domain/enums';
 import { getBudgetPeriod } from '@/domain/finance/budget';
 import { normalizeMerchant } from '@/domain/merchants/normalize';
-import type { DecimalString } from '@/domain/money/decimal';
 import { cashFlowInBase, topSpendingCategories } from '@/domain/transactions/insights';
 import { usePreferences } from '@/features/settings/hooks/usePreferences';
 import { useFormatter } from '@/i18n/FormatContext';
@@ -152,39 +151,48 @@ export function useHomeInsights() {
     enabled: period !== null,
     queryFn: async () => {
       if (!period) return null;
-      const [flowRows, spendRows, categories] = await Promise.all([
-        repos.transactions.cashFlow(period.start, period.end),
-        repos.transactions.categorySpending(period.start, period.end),
+      // Same conversion policy as Reports: each entry's recorded snapshot or
+      // the rate on its own date (never today's rate for older entries).
+      const range = { start: period.start, end: period.end };
+      const [flowRows, spendRows, categories, fx] = await Promise.all([
+        repos.reports.flows(range, base),
+        repos.reports.categorySpending(range, base),
         repos.categories.list({ includeArchived: true }),
+        repos.reports.conversionNote(range, base),
       ]);
-      const currencies = new Set<CurrencyCode>(
-        [...flowRows, ...spendRows].map((r) => r.baseCurrency).filter((c) => c !== base),
-      );
-      const rates = new Map<CurrencyCode, DecimalString | null>();
-      for (const c of currencies) rates.set(c, await repos.exchangeRates.findRate(c, base, today));
-      const getRate = (c: CurrencyCode) => rates.get(c) ?? null;
+      const noRate = () => null;
+      const missing = (rows: readonly { currency: CurrencyCode; baseMinor: number | null }[]) =>
+        [...new Set(rows.filter((r) => r.baseMinor === null).map((r) => r.currency))].sort();
 
-      const flow = cashFlowInBase(
-        flowRows.map((r) => ({ type: r.type, currency: r.baseCurrency, totalMinor: r.totalMinor })),
+      const flowResult = cashFlowInBase(
+        flowRows
+          .filter((r) => r.baseMinor !== null)
+          .map((r) => ({ type: r.type, currency: base, totalMinor: r.baseMinor! })),
         base,
-        getRate,
+        noRate,
       );
+      // Never a partial total: any amount without a rate makes it incomplete.
+      const flowMissing = missing(flowRows);
+      const flow = {
+        summary: flowMissing.length > 0 ? null : flowResult.summary,
+        missingRates: flowMissing,
+      };
       const parentOf = new Map(categories.map((c) => [c.id, c.parentId]));
-      const top = topSpendingCategories(
-        spendRows.map((r) => ({
-          categoryId: r.categoryId,
-          currency: r.baseCurrency,
-          totalMinor: r.totalMinor,
-        })),
+      const topResult = topSpendingCategories(
+        spendRows
+          .filter((r) => r.baseMinor !== null)
+          .map((r) => ({ categoryId: r.categoryId, currency: base, totalMinor: r.baseMinor! })),
         parentOf,
         base,
-        getRate,
+        noRate,
         5,
       );
+      const top = { ...topResult, missingRates: missing(spendRows) };
       return {
         period,
         flow,
         top,
+        fx,
         categoriesById: new Map(categories.map((c) => [c.id, c])),
         hasTransactions: flowRows.length > 0,
       };

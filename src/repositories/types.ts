@@ -1,4 +1,8 @@
 import type { CurrencyCode } from '@/domain/currency/currencies';
+import type { ProviderRate } from '@/domain/fx/frankfurter';
+import type { ConversionBasis, ConversionNote } from '@/domain/fx/note';
+import type { RateMode, ResolvedRate } from '@/domain/fx/policy';
+import type { ManualRateInput } from '@/validation/exchangeRates';
 import type { CategoryKind, TransactionType } from '@/domain/enums';
 import type { Money } from '@/domain/money/money';
 import type {
@@ -94,17 +98,95 @@ export interface PreferencesRepository {
   update(patch: PreferencesUpdate): Promise<UserPreferences>;
 }
 
+/** A rate the user entered (1 base = rate quote from rateDate). */
+export interface ManualRate {
+  id: string;
+  base: CurrencyCode;
+  quote: CurrencyCode;
+  rate: DecimalString;
+  rateDate: IsoDate;
+  enteredAt: string;
+}
+
+/** Bookkeeping for one refresh scope (e.g. a provider). */
+export interface FxFetchLog {
+  lastAttemptAt: string | null;
+  lastSuccessAt: string | null;
+  lastError: string | null;
+  retryAfter: string | null;
+}
+
+/** Provider coverage per currency (contiguous cached range). */
+export interface RateCoverage {
+  currency: CurrencyCode;
+  firstDate: IsoDate;
+  lastDate: IsoDate;
+  lastFetchedAt: string | null;
+}
+
+/** One currency's value in the base currency today, for the rates screen. */
+export interface CurrentRateRow {
+  currency: CurrencyCode;
+  rate: ResolvedRate | null;
+  fetchedAt: string | null;
+}
+
 export interface ExchangeRateRepository {
   /**
-   * Latest known rate converting 1 unit of `from` into `to` on or before
-   * `onOrBefore` (YYYY-MM-DD). Uses the inverse quote when only that is
-   * stored. Null when unknown — callers must never guess.
+   * Rate converting 1 unit of `from` into `to` for an entry on
+   * `onOrBefore` (YYYY-MM-DD), historical policy. Null when unknown —
+   * callers must never guess.
    */
   findRate(
     from: CurrencyCode,
     to: CurrencyCode,
     onOrBefore: IsoDate,
   ): Promise<DecimalString | null>;
+  /** Full resolution (rate, date, source, kind, derivation, staleness). */
+  resolve(
+    from: CurrencyCode,
+    to: CurrencyCode,
+    date: IsoDate,
+    mode: RateMode,
+  ): Promise<ResolvedRate | null>;
+  /** Upserts validated provider rows in one transaction; returns rows written. */
+  storeProviderRates(
+    rows: readonly ProviderRate[],
+    meta: { source: string; attribution: string; fetchedAt: string },
+  ): Promise<number>;
+  /**
+   * Saves a manual rate. Throws a 'conflict' AppError when one already exists
+   * for the pair and date unless `replace` is true (explicit confirmation).
+   */
+  saveManualRate(
+    input: ManualRateInput,
+    options: { today: IsoDate; replace: boolean },
+  ): Promise<ManualRate>;
+  findManualRate(
+    base: CurrencyCode,
+    quote: CurrencyCode,
+    rateDate: IsoDate,
+  ): Promise<ManualRate | null>;
+  listManualRates(): Promise<ManualRate[]>;
+  deleteManualRate(id: string): Promise<void>;
+  /** Currencies of the user's accounts, entries, budgets, bills and goals + base. */
+  currenciesInUse(): Promise<CurrencyCode[]>;
+  /** Earliest entry date that may need a conversion into `base`, or null. */
+  earliestConversionDate(base: CurrencyCode): Promise<IsoDate | null>;
+  coverage(currencies: readonly CurrencyCode[], source: string): Promise<RateCoverage[]>;
+  recordCoverage(
+    source: string,
+    currencies: readonly CurrencyCode[],
+    from: string,
+    to: string,
+  ): Promise<void>;
+  currentRates(
+    currencies: readonly CurrencyCode[],
+    base: CurrencyCode,
+    today: IsoDate,
+  ): Promise<CurrentRateRow[]>;
+  fetchLog(scope: string): Promise<FxFetchLog>;
+  recordFetch(scope: string, patch: Partial<FxFetchLog>): Promise<void>;
 }
 
 export interface CategoryUsage {
@@ -267,6 +349,8 @@ export interface BudgetListItem {
   evaluation: BudgetEvaluation;
   /** Currencies whose spending could not be converted (no known rate). */
   missingRates: CurrencyCode[];
+  /** What converted amounts are based on (rates used, dates, sources, missing). */
+  fx: ConversionNote;
 }
 
 export interface BudgetSpendingLine {
@@ -337,6 +421,8 @@ export interface SubscriptionSummary {
   /** All subscriptions in the base currency; null when a rate is missing. */
   base: { currency: CurrencyCode; monthly: PeriodicCost; yearly: PeriodicCost } | null;
   missingRates: CurrencyCode[];
+  /** What converted amounts are based on (rates used, dates, sources, missing). */
+  fx: ConversionNote;
 }
 
 export type BillKind = 'bill' | 'subscription';
@@ -369,6 +455,8 @@ export interface GoalListItem {
   progress: GoalProgress;
   /** Contributions in other currencies without a known rate (excluded from saved). */
   missingRates: CurrencyCode[];
+  /** What converted amounts are based on (rates used, dates, sources, missing). */
+  fx: ConversionNote;
 }
 
 export interface ContributionDetail extends GoalContribution {
@@ -424,6 +512,8 @@ export interface ReportLineQuery {
   includeSubcategories?: boolean;
   /** kind 'merchant': normalised key (null = no merchant recorded). */
   merchantKey?: string | null;
+  /** Report currency: each line also gets its value in it (same policy as the totals). */
+  base?: CurrencyCode;
 }
 
 /** One entry (or split line) behind a report value, in its own currency. */
@@ -440,6 +530,10 @@ export interface ReportLine {
   amountMinor: number;
   currency: CurrencyCode;
   isSplitLine: boolean;
+  /** Value in the query's `base` (null = no rate; absent when no base was asked). */
+  baseMinor?: number | null;
+  /** How baseMinor was obtained (same policy as the report totals). */
+  basis?: ConversionBasis;
 }
 
 export interface AccountBalanceHistoryInput {
@@ -460,6 +554,11 @@ export interface ReportRepository {
   dataStart(): Promise<IsoDate | null>;
   balanceInputs(range: DateRange): Promise<AccountBalanceHistoryInput[]>;
   lines(query: ReportLineQuery): Promise<ReportLine[]>;
+  /**
+   * What income/spending totals for the range are based on in `base`
+   * (snapshots, report conversions with rate dates and sources, missing).
+   */
+  conversionNote(range: DateRange, base: CurrencyCode): Promise<ConversionNote>;
 }
 
 // ------------------------------------------------------- import / export

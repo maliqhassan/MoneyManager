@@ -1,3 +1,4 @@
+import type { CurrencyCode } from '@/domain/currency/currencies';
 import { createRepositories, type Repositories } from '@/repositories';
 
 import { createTestContext, insertSyncedPreferences, TEST_USER_ID } from './factories';
@@ -71,7 +72,7 @@ export async function createAccount(
   patch: Partial<{
     name: string;
     type: 'checking' | 'savings' | 'credit_card' | 'cash';
-    currency: 'USD' | 'EUR' | 'JPY' | 'GBP';
+    currency: CurrencyCode;
     openingBalanceMinor: number;
   }> = {},
 ) {

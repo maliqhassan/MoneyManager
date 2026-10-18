@@ -183,7 +183,8 @@ export class SqliteBillRepository implements BillRepository {
       .map(([currency, v]) => ({ currency, ...v }))
       .sort((a, b) => a.currency.localeCompare(b.currency));
 
-    const converter = new Converter(this.db);
+    // Ongoing costs are estimated at today's (latest cached) rates.
+    const converter = new Converter(this.db, 'current');
     let base: SubscriptionSummary['base'] = {
       currency: baseCurrency,
       monthly: { amountMinor: 0, approximate: false },
@@ -209,7 +210,13 @@ export class SqliteBillRepository implements BillRepository {
         }),
       };
     }
-    return { count: subs.length, perCurrency, base, missingRates: converter.missingList() };
+    return {
+      count: subs.length,
+      perCurrency,
+      base,
+      missingRates: converter.missingList(),
+      fx: converter.note(baseCurrency),
+    };
   }
 
   // ----------------------------------------------------------------- writes

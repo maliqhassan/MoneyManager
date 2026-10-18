@@ -131,6 +131,7 @@ export default function HomeScreen() {
           totals={data.totals}
           missingRates={data.missingRates}
           accountCount={data.activeCount}
+          fx={data.fx}
         />
       )}
 
@@ -143,6 +144,7 @@ export default function HomeScreen() {
                   period={insights.data.period}
                   summary={insights.data.flow.summary}
                   missingRates={insights.data.flow.missingRates}
+                  fx={insights.data.fx}
                 />
                 <Button
                   label={t('home.viewReports')}

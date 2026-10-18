@@ -49,6 +49,20 @@ export default function ReportTransactionsScreen() {
   };
   const lines = useReportLines(query);
 
+  const base = formatter.settings.baseCurrency;
+  // The report's own figure: each line converted by the report's policy.
+  const baseTotal = (() => {
+    const data = lines.data ?? [];
+    if (!data.some((l) => l.currency !== base)) return null;
+    const missing = [...new Set(data.filter((l) => l.baseMinor === null).map((l) => l.currency))];
+    if (missing.length > 0) return { missing: missing.sort(), amount: null };
+    const sum = data.reduce(
+      (s, l) => s + (kind === 'income' ? (l.baseMinor ?? 0) : -(l.baseMinor ?? 0)),
+      0,
+    );
+    return { missing: [], amount: formatter.money({ amountMinor: sum, currency: base }) };
+  })();
+
   const totals = (() => {
     const map = new Map<CurrencyCode, number>();
     for (const l of lines.data ?? []) {
@@ -96,6 +110,15 @@ export default function ReportTransactionsScreen() {
       { amountMinor: item.amountMinor, currency: item.currency },
       { signDisplay: 'exceptZero' },
     );
+    const converted =
+      item.currency !== base && item.baseMinor !== null && item.baseMinor !== undefined
+        ? t('reports.lines.converted', {
+            amount: formatter.money(
+              { amountMinor: item.baseMinor, currency: base },
+              { signDisplay: 'exceptZero' },
+            ),
+          })
+        : null;
     const meta = [
       formatter.date(item.localDate, 'medium'),
       category,
@@ -107,7 +130,7 @@ export default function ReportTransactionsScreen() {
     return (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${item.payee ?? category ?? ''}, ${meta}, ${amount}`}
+        accessibilityLabel={`${item.payee ?? category ?? ''}, ${meta}, ${amount}${converted ? `, ${converted}` : ''}`}
         onPress={() => router.push(`/transactions/${item.transactionId}` as Href)}
         style={({ pressed }) => [
           styles.row,
@@ -122,9 +145,16 @@ export default function ReportTransactionsScreen() {
             {meta}
           </Text>
         </View>
-        <Text variant="amount" tone={item.amountMinor > 0 ? 'positive' : 'text'}>
-          {amount}
-        </Text>
+        <View style={styles.amounts}>
+          <Text variant="amount" tone={item.amountMinor > 0 ? 'positive' : 'text'}>
+            {amount}
+          </Text>
+          {converted ? (
+            <Text variant="caption" tone="textSecondary">
+              {converted}
+            </Text>
+          ) : null}
+        </View>
       </Pressable>
     );
   };
@@ -148,6 +178,16 @@ export default function ReportTransactionsScreen() {
                 {totals.length === 1
                   ? t('reports.lines.total', { amount: totals[0] ?? '' })
                   : t('reports.lines.totalMixed', { amounts: totals.join(', ') })}
+              </Text>
+            ) : null}
+            {baseTotal ? (
+              <Text variant="bodySmall" tone={baseTotal.amount ? 'textSecondary' : 'warning'}>
+                {baseTotal.amount
+                  ? t('reports.lines.baseTotal', { base, amount: baseTotal.amount })
+                  : t('reports.lines.baseIncomplete', {
+                      base,
+                      currencies: baseTotal.missing.join(', '),
+                    })}
               </Text>
             ) : null}
             {(lines.data?.length ?? 0) >= LIMIT ? (
@@ -177,6 +217,7 @@ export default function ReportTransactionsScreen() {
 const useStyles = makeStyles((t) => ({
   list: { backgroundColor: t.colors.background },
   header: { padding: t.spacing.lg, gap: t.spacing.sm },
+  amounts: { alignItems: 'flex-end', gap: t.spacing.xxs },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

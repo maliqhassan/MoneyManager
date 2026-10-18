@@ -5,12 +5,15 @@ import { AppError } from '@/lib/errors';
 import { enqueueChange } from '@/sync/outbox';
 import type { SyncTableName } from '@/sync/registry';
 
+/** Local-only tables whose changes still refresh queries (no sync). */
+export type LocalTableName = 'exchange_rates';
+
 export interface RepositoryContext {
   userId: string;
   newId: () => string;
   now: () => string;
   /** Called after every committed write (query invalidation + sync scheduling). */
-  onChange: (table: SyncTableName) => void;
+  onChange: (table: SyncTableName | LocalTableName) => void;
 }
 
 /** Validates input, converting Zod issues into an AppError with field errors (i18n keys). */

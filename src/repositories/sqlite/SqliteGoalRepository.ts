@@ -327,6 +327,7 @@ export class SqliteGoalRepository implements GoalRepository {
             today,
           }),
           missingRates: converter.missingList(),
+          fx: converter.note(goal.currency),
         };
       }),
     );

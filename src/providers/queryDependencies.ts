@@ -16,6 +16,9 @@ export const QUERY_DEPENDENTS: Readonly<Record<string, readonly string[]>> = {
   budget_revisions: ['budgets'],
   bill_payments: ['bills'],
   goal_contributions: ['savings_goals'],
+  // Rates change converted values everywhere (reports and insights live under
+  // the 'transactions' root; combined balances under 'accounts').
+  exchange_rates: ['accounts', 'transactions', 'budgets', 'bills', 'savings_goals'],
 };
 
 export function queryRootsFor(table: string): string[] {

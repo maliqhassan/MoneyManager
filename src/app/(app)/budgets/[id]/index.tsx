@@ -26,6 +26,7 @@ import {
 } from '@/features/budgets/hooks';
 import { useCategoryName } from '@/features/categories/hooks';
 import { confirmAction, toastSaved } from '@/features/planning/feedback';
+import { RateNote } from '@/features/exchangeRates/components/RateNote';
 import { useFormatter } from '@/i18n/FormatContext';
 import { makeStyles } from '@/theme';
 
@@ -189,6 +190,7 @@ export default function BudgetDetailScreen() {
           </Text>
         </View>
       ) : null}
+      <RateNote note={item.fx} showMissing={false} />
 
       <Button
         label={t('budgets.detail.viewTransactions')}

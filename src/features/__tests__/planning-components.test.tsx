@@ -5,9 +5,13 @@ import { evaluateGoal } from '@/domain/planning/goals';
 import { BillRow } from '@/features/bills/components/BillRow';
 import { SubscriptionSummaryCard } from '@/features/bills/components/SubscriptionSummaryCard';
 import { BudgetCard } from '@/features/budgets/components/BudgetCard';
+import { emptyNote } from '@/domain/fx/note';
 import { GoalCard } from '@/features/goals/components/GoalCard';
 import type { BillListItem, BudgetListItem, GoalListItem } from '@/repositories/types';
 import { renderWithProviders } from '@/test/render';
+
+// Cards link to other screens (e.g. Exchange rates); navigation is not under test here.
+jest.mock('expo-router', () => ({ router: { push: jest.fn(), navigate: jest.fn() } }));
 
 const synced = {
   id: 'id-1',
@@ -56,6 +60,7 @@ function budgetItem(spentMinor: number, missingRates: string[] = []): BudgetList
     category: null,
     evaluation,
     missingRates: missingRates as BudgetListItem['missingRates'],
+    fx: emptyNote('USD'),
   };
 }
 
@@ -149,6 +154,7 @@ describe('SubscriptionSummaryCard', () => {
             yearly: { amountMinor: 26_000, approximate: true },
           },
           missingRates: [],
+          fx: emptyNote('USD'),
         }}
       />,
     );
@@ -178,6 +184,7 @@ describe('GoalCard', () => {
       today: '2026-10-08',
     }),
     missingRates: [],
+    fx: emptyNote('USD'),
   });
 
   it('shows progress and remaining', async () => {
