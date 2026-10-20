@@ -4,6 +4,7 @@ import { migration002RegionalPreferences } from './002_regional_preferences';
 import { migration003Transactions } from './003_transactions';
 import { migration004Planning } from './004_planning';
 import { migration005ExchangeRates } from './005_exchange_rates';
+import { migration006Recurring } from './006_recurring';
 
 export interface Migration {
   version: number;
@@ -22,6 +23,7 @@ export const MIGRATIONS: readonly Migration[] = [
   migration003Transactions,
   migration004Planning,
   migration005ExchangeRates,
+  migration006Recurring,
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 0;

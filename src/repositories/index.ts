@@ -11,7 +11,9 @@ import { SqliteExchangeRateRepository } from './sqlite/SqliteExchangeRateReposit
 import { SqliteGoalRepository } from './sqlite/SqliteGoalRepository';
 import { SqliteExportRepository } from './sqlite/SqliteExportRepository';
 import { SqliteImportRepository } from './sqlite/SqliteImportRepository';
+import { SqliteRecurringRepository } from './sqlite/SqliteRecurringRepository';
 import { SqliteReportRepository } from './sqlite/SqliteReportRepository';
+import { SqliteUpcomingRepository } from './sqlite/SqliteUpcomingRepository';
 import { SqlitePreferencesRepository } from './sqlite/SqlitePreferencesRepository';
 import { SqliteTagRepository } from './sqlite/SqliteTagRepository';
 import { SqliteTransactionRepository } from './sqlite/SqliteTransactionRepository';
@@ -40,5 +42,7 @@ export function createRepositories(db: SqlDatabase, ctx: RepositoryContext): Rep
     reports: new SqliteReportRepository(db, ctx.userId),
     imports: new SqliteImportRepository(db, ctx, transactions),
     exports: new SqliteExportRepository(db, ctx.userId),
+    recurring: new SqliteRecurringRepository(db, ctx, transactions),
+    upcoming: new SqliteUpcomingRepository(db, ctx.userId),
   };
 }

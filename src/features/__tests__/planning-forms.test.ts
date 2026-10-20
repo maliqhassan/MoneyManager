@@ -286,7 +286,14 @@ describe('query invalidation dependencies', () => {
       'budgets',
       'bills',
       'savings_goals',
+      'recurring_transactions', // a deleted generated transaction shows in its rule's history
     ]);
+    expect(queryRootsFor('recurring_occurrences')).toEqual([
+      'recurring_occurrences',
+      'recurring_transactions',
+      'upcoming',
+    ]);
+    expect(queryRootsFor('bill_payments')).toContain('upcoming');
     expect(queryRootsFor('categories')).toContain('budgets');
     expect(queryRootsFor('user_preferences')).toContain('budgets');
     expect(queryRootsFor('goal_contributions')).toEqual(['goal_contributions', 'savings_goals']);

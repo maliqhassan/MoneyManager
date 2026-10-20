@@ -71,6 +71,16 @@ reconciles it via version check) or if the local version is already ≥ the
 server's. Local-only derived columns (e.g. `transactions.search_text`) are
 recomputed from the pulled row via the registry's `derive` hook.
 
+## Recurring rules
+
+Posting an occurrence queues the generated transaction and then its
+`recurring_occurrences` row in one SQLite transaction (after the rule, which
+was queued when it was created), so the server always receives parents first.
+Another device that pulls the occurrence never offers that date again. If two
+devices post the same date while both are offline, the server's unique index
+on `transactions (recurring_transaction_id, recurrence_date)` rejects the
+second copy; it is reported in Settings → Sync, not silently duplicated.
+
 ## Planning writes
 
 Budgets (+ revision), bills, bill payments and goal contributions use the same

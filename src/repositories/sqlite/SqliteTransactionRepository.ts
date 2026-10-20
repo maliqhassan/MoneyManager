@@ -59,6 +59,10 @@ import {
 
 const PAGE_SIZE = 50;
 
+/** Where a generated entry came from. */
+export type EntryLink =
+  { batchId: string; hash: string } | { ruleId: string; occurrenceDate: string };
+
 const fieldError = (field: string, key: string) =>
   new AppError('validation', key, { fieldErrors: { [field]: key } });
 
@@ -414,32 +418,36 @@ export class SqliteTransactionRepository implements TransactionRepository {
   async createInTransaction(
     tx: SqlExecutor,
     input: TransactionInput,
-    imported?: { batchId: string; hash: string },
+    link?: EntryLink,
   ): Promise<string> {
     const valid = validate(transactionInputSchema, input);
     const id = this.ctx.newId();
-    await this.insertEntry(tx, id, valid, imported);
+    await this.insertEntry(tx, id, valid, link);
     return id;
   }
 
   /**
-   * Validates and writes an entry. `imported` (CSV import only) records the
-   * import batch and the row's stable identity; every other rule is the same
-   * as for an entry typed by hand.
+   * Validates and writes an entry. `link` records where a generated entry
+   * came from — a CSV import (batch + stable row identity) or a recurring
+   * rule's occurrence (rule + scheduled date, unique) — every other rule is
+   * the same as for an entry typed by hand.
    */
   private async insertEntry(
     tx: SqlExecutor,
     id: string,
     valid: ValidTransactionInput,
-    imported?: { batchId: string; hash: string },
+    link?: EntryLink,
   ) {
     const account = await this.requireAccount(tx, valid.accountId, 'accountId', true);
     await this.checkCategories(tx, valid, new Set());
     await this.checkRefundLink(tx, valid);
     const row = await this.buildEntryRow(tx, valid, account);
-    if (imported) {
-      row.import_batch_id = imported.batchId;
-      row.import_hash = imported.hash;
+    if (link && 'batchId' in link) {
+      row.import_batch_id = link.batchId;
+      row.import_hash = link.hash;
+    } else if (link) {
+      row.recurring_transaction_id = link.ruleId;
+      row.recurrence_date = link.occurrenceDate;
     }
     await insertSynced(tx, this.ctx, 'transactions', id, row);
     await this.writeSplits(tx, id, valid, row);

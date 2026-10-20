@@ -21,7 +21,11 @@ export const SYNC_TABLES = [
   { name: 'merchants', booleanColumns: [], jsonColumns: [] },
   { name: 'tags', booleanColumns: [], jsonColumns: [] },
   { name: 'transfers', booleanColumns: [], jsonColumns: [] },
-  { name: 'recurring_transactions', booleanColumns: ['auto_post', 'is_active'], jsonColumns: [] },
+  {
+    name: 'recurring_transactions',
+    booleanColumns: ['auto_post', 'is_active'],
+    jsonColumns: ['tag_names'],
+  },
   { name: 'import_batches', booleanColumns: [], jsonColumns: ['column_mapping'] },
   {
     name: 'transactions',
@@ -34,6 +38,8 @@ export const SYNC_TABLES = [
   },
   { name: 'transaction_splits', booleanColumns: [], jsonColumns: [] },
   { name: 'transaction_tags', booleanColumns: [], jsonColumns: [] },
+  // After transactions: an occurrence references the transaction it posted.
+  { name: 'recurring_occurrences', booleanColumns: [], jsonColumns: [] },
   { name: 'category_rules', booleanColumns: ['is_enabled'], jsonColumns: [] },
   { name: 'budgets', booleanColumns: ['rollover_enabled', 'is_archived'], jsonColumns: [] },
   { name: 'budget_revisions', booleanColumns: ['rollover_enabled'], jsonColumns: [] },

@@ -2,7 +2,11 @@ import type { CurrencyCode } from '@/domain/currency/currencies';
 import type { ProviderRate } from '@/domain/fx/frankfurter';
 import type { ConversionBasis, ConversionNote } from '@/domain/fx/note';
 import type { RateMode, ResolvedRate } from '@/domain/fx/policy';
+import type { CashflowHorizon, CurrencyFlow, ExpectedItem } from '@/domain/planning/cashflow';
+import type { PendingOccurrence, RuleStatus } from '@/domain/planning/recurring';
+import type { ReminderCandidate } from '@/domain/planning/reminders';
 import type { ManualRateInput } from '@/validation/exchangeRates';
+import type { RecurringRuleInput } from '@/validation/recurring';
 import type { CategoryKind, TransactionType } from '@/domain/enums';
 import type { Money } from '@/domain/money/money';
 import type {
@@ -16,6 +20,7 @@ import type {
   CategoryRule,
   IsoDate,
   GoalContribution,
+  RecurringTransaction,
   SavingsGoal,
   Tag,
   Transaction,
@@ -623,6 +628,8 @@ export interface Repositories {
   accounts: AccountRepository;
   preferences: PreferencesRepository;
   exchangeRates: ExchangeRateRepository;
+  recurring: RecurringRepository;
+  upcoming: UpcomingRepository;
   categories: CategoryRepository;
   categoryRules: CategoryRuleRepository;
   tags: TagRepository;
@@ -637,3 +644,90 @@ export interface Repositories {
 }
 
 export type LocalChangeListener = (table: string) => void;
+
+// ------------------------------------------------------------ recurring
+
+/** Why a rule's occurrences cannot be posted right now. */
+export type RuleProblem = 'account_archived' | 'category_archived' | 'currency_changed';
+
+export interface RecurringRuleItem {
+  rule: RecurringTransaction;
+  accountName: string | null;
+  categoryName: string | null;
+  categorySystemKey: string | null;
+  /** First unhandled occurrence (may be overdue); null when none remain. */
+  next: IsoDate | null;
+  /** Overdue and due-today occurrences waiting for a decision. */
+  due: PendingOccurrence[];
+  /** Active, but the end date leaves no further occurrences. */
+  finished: boolean;
+  problem: RuleProblem | null;
+}
+
+export interface OccurrenceHistoryItem {
+  date: IsoDate;
+  status: 'posted' | 'skipped';
+  transactionId: Uuid | null;
+  /** The generated transaction was deleted afterwards (not recreated). */
+  transactionDeleted: boolean;
+  amountMinor: number | null;
+  currency: CurrencyCode | null;
+}
+
+export interface RecurringRuleDetail extends RecurringRuleItem {
+  history: OccurrenceHistoryItem[];
+  /** Next scheduled dates that are not handled yet (preview). */
+  upcoming: IsoDate[];
+}
+
+export type PostOccurrenceResult =
+  { status: 'posted'; transactionId: Uuid } | { status: 'already_handled' };
+
+export interface AutoPostResult {
+  posted: number;
+  /** Occurrences that could not be posted (left due; nothing was created). */
+  blocked: { ruleId: Uuid; date: IsoDate; reason: string }[];
+}
+
+export interface RecurringRepository {
+  list(today: IsoDate, options?: { status?: RuleStatus | 'all' }): Promise<RecurringRuleItem[]>;
+  getById(id: Uuid, today: IsoDate): Promise<RecurringRuleDetail | null>;
+  create(input: RecurringRuleInput): Promise<RecurringTransaction>;
+  /** Changes only occurrences that are not handled yet; history is untouched. */
+  update(id: Uuid, input: RecurringRuleInput): Promise<void>;
+  pause(id: Uuid): Promise<void>;
+  /** Occurrences during the pause are not due; the rule continues from today. */
+  resume(id: Uuid, today: IsoDate): Promise<void>;
+  /** Cancels the rule: no further occurrences; history stays. */
+  end(id: Uuid): Promise<void>;
+  /** Idempotent: an occurrence already posted or skipped is never posted again. */
+  post(id: Uuid, date: IsoDate, today: IsoDate): Promise<PostOccurrenceResult>;
+  skip(id: Uuid, date: IsoDate): Promise<void>;
+  /** Makes a skipped occurrence due again (explicit decision). */
+  unskip(id: Uuid, date: IsoDate): Promise<void>;
+  /** Explicitly re-creates the transaction of a posted occurrence whose transaction was deleted. */
+  postAgain(id: Uuid, date: IsoDate, today: IsoDate): Promise<Uuid>;
+  /** Posts due occurrences of auto-post rules (never future, never before the rule existed). */
+  autoPostDue(today: IsoDate): Promise<AutoPostResult>;
+}
+
+export interface UpcomingCashflow {
+  from: IsoDate;
+  to: IsoDate;
+  items: ExpectedItem[];
+  byCurrency: CurrencyFlow[];
+  /** All currencies converted with known rates (current policy); null when incomplete. */
+  combined: {
+    currency: CurrencyCode;
+    incomeMinor: number;
+    expenseMinor: number;
+    netMinor: number;
+  } | null;
+  fx: ConversionNote;
+}
+
+export interface UpcomingRepository {
+  cashflow(today: IsoDate, horizon: CashflowHorizon, base: CurrencyCode): Promise<UpcomingCashflow>;
+  /** Items that may get a reminder, through `through` (rules + bills). */
+  reminderCandidates(today: IsoDate, through: IsoDate): Promise<ReminderCandidate[]>;
+}

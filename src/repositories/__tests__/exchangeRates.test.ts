@@ -1,4 +1,4 @@
-import { MIGRATIONS, migrate } from '@/database/migrations';
+import { LATEST_SCHEMA_VERSION, MIGRATIONS, migrate } from '@/database/migrations';
 import type { CurrencyCode } from '@/domain/currency/currencies';
 import { addDays, compareDates } from '@/domain/dates/calendar';
 import type { ProviderRate } from '@/domain/fx/frankfurter';
@@ -416,7 +416,7 @@ describe('local migration 5', () => {
        VALUES ('a', 'EUR', 'USD', '1.08', '2026-10-01', 'ecb', '2026-10-01T00:00:00Z'),
               ('b', 'EUR', 'PKR', '310', '2026-10-01', 'manual', '2026-10-02T00:00:00Z')`,
     );
-    expect(await migrate(db)).toBe(5);
+    expect(await migrate(db)).toBe(LATEST_SCHEMA_VERSION);
     expect(
       await db.getAll(`SELECT id, rate, kind, fetched_at FROM exchange_rates ORDER BY id`),
     ).toEqual([

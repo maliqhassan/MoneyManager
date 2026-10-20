@@ -4,12 +4,11 @@ A global, offline-first personal finance app — **Track → Budget → Understa
 
 React Native (Expo SDK 57) · TypeScript (strict) · Expo Router · SQLite · Supabase · Zustand · TanStack Query · React Hook Form + Zod
 
-> **Status: Phase 6 complete.** Foundation, onboarding, regional preferences,
+> **Status: Phase 7 complete.** Foundation, onboarding, regional preferences,
 > accounts, transactions & categories, planning (budgets, bills & subscriptions,
-> savings goals), reports & analytics, CSV import & data export, and
-> exchange rates & multi-currency (reference rates from Frankfurter, manual
-> rates, exact conversion with labelled sources and dates). Device
-> notifications follow — see [docs/roadmap.md](docs/roadmap.md).
+> savings goals), reports & analytics, CSV import & data export, exchange
+> rates & multi-currency, and recurring transactions with local reminders and
+> an upcoming cash-flow view — see [docs/roadmap.md](docs/roadmap.md).
 
 ## Quick start
 
@@ -93,5 +92,6 @@ docs/             Architecture and design documentation
 - [Authentication](docs/authentication.md) — providers, sessions, Supabase setup
 - [Offline & sync](docs/offline-sync.md) — outbox, conflicts, retries
 - [Exchange rates](docs/exchange-rates.md) — provider, storage, conversion policy
+- [Recurring & reminders](docs/recurring.md) — rules, occurrences, cash flow, notifications
 - [Design system](docs/design-system.md) — tokens, components, accessibility
 - [Roadmap](docs/roadmap.md) — phases and what's next

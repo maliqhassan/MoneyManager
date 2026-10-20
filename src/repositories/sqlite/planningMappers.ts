@@ -11,6 +11,8 @@ import type {
   Budget,
   BudgetRevision,
   GoalContribution,
+  RecurringOccurrence,
+  RecurringTransaction,
   SavingsGoal,
 } from '@/domain/models';
 
@@ -166,4 +168,74 @@ export const toContribution = (
   transferId: r.transfer_id,
   transactionId: r.transaction_id,
   notes: r.notes,
+});
+
+export interface RecurringRow extends SyncedRow {
+  account_id: string;
+  category_id: string | null;
+  type: 'expense' | 'income' | 'refund';
+  amount_minor: number;
+  currency: CurrencyCode;
+  payee: string | null;
+  notes: string | null;
+  frequency: RecurrenceFrequency;
+  interval: number;
+  start_date: string;
+  end_date: string | null;
+  next_occurrence_date: string | null;
+  auto_post: number;
+  time_zone: string;
+  is_active: number;
+  status: 'active' | 'paused' | 'ended';
+  active_from: string | null;
+  reminder_days_before: number | null;
+  tag_names: string | null;
+}
+
+const parseTags = (raw: string | null): string[] => {
+  try {
+    const v: unknown = JSON.parse(raw ?? '[]');
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+};
+
+/** Amounts are stored positive; the type gives the direction. */
+export const toRecurring = (r: RecurringRow): RecurringTransaction => ({
+  ...synced(r),
+  accountId: r.account_id,
+  categoryId: r.category_id,
+  type: r.type,
+  amountMinor: Math.abs(r.amount_minor),
+  currency: r.currency,
+  payee: r.payee,
+  notes: r.notes,
+  frequency: r.frequency,
+  interval: r.interval,
+  startDate: r.start_date,
+  endDate: r.end_date,
+  nextOccurrenceDate: r.next_occurrence_date,
+  autoPost: toBool(r.auto_post),
+  timeZone: r.time_zone,
+  isActive: toBool(r.is_active),
+  status: r.status,
+  activeFrom: r.active_from ?? r.start_date,
+  reminderDaysBefore: r.reminder_days_before,
+  tagNames: parseTags(r.tag_names),
+});
+
+export interface RecurringOccurrenceRow extends SyncedRow {
+  recurring_transaction_id: string;
+  occurrence_date: string;
+  status: 'posted' | 'skipped';
+  transaction_id: string | null;
+}
+
+export const toRecurringOccurrence = (r: RecurringOccurrenceRow): RecurringOccurrence => ({
+  ...synced(r),
+  recurringTransactionId: r.recurring_transaction_id,
+  occurrenceDate: r.occurrence_date,
+  status: r.status,
+  transactionId: r.transaction_id,
 });

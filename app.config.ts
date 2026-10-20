@@ -80,6 +80,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           dark: { image: './assets/splash-icon.png', backgroundColor: '#0B0F14' },
         },
       ],
+      // Local reminders only (no push). No exact-alarm permission: Android may
+      // deliver reminders a little late; that is stated in the app.
+      ['expo-notifications', { icon: './assets/android-icon-monochrome.png', color: '#2F55D4' }],
     ],
     experiments: {
       typedRoutes: true,

@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import {
-  Badge,
   Button,
   Card,
   Divider,
@@ -108,8 +107,7 @@ export default function SettingsScreen() {
           icon="notifications-outline"
           title={t('more.notifications')}
           subtitle={t('more.notificationsHint')}
-          trailing={<Badge label={t('common.notAvailableYet')} />}
-          showChevron={false}
+          onPress={() => router.push('/settings/reminders' as Href)}
         />
       </Card>
 

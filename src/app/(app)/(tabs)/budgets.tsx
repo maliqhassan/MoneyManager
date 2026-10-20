@@ -22,12 +22,23 @@ import { BudgetCard } from '@/features/budgets/components/BudgetCard';
 import { useBudgetOverviews } from '@/features/budgets/hooks';
 import { GoalCard } from '@/features/goals/components/GoalCard';
 import { useGoals } from '@/features/goals/hooks';
+import {
+  RecurringSection,
+  UpcomingSection,
+} from '@/features/recurring/components/PlanningSections';
 import { useFormatter } from '@/i18n/FormatContext';
 import type { BillListItem, BudgetListItem, GoalFilter, GoalListItem } from '@/repositories/types';
 import { makeStyles } from '@/theme';
 
-type Section = 'budgets' | 'bills' | 'subscriptions' | 'goals';
-const SECTIONS: readonly Section[] = ['budgets', 'bills', 'subscriptions', 'goals'];
+type Section = 'budgets' | 'bills' | 'subscriptions' | 'goals' | 'upcoming' | 'recurring';
+const SECTIONS: readonly Section[] = [
+  'upcoming',
+  'budgets',
+  'bills',
+  'subscriptions',
+  'recurring',
+  'goals',
+];
 
 /**
  * The planning area: budgets, bills, subscriptions and savings goals behind
@@ -56,6 +67,8 @@ export default function PlanningScreen() {
         {section === 'bills' ? <BillsSection kind="bill" /> : null}
         {section === 'subscriptions' ? <BillsSection kind="subscription" /> : null}
         {section === 'goals' ? <GoalsSection /> : null}
+        {section === 'upcoming' ? <UpcomingSection /> : null}
+        {section === 'recurring' ? <RecurringSection /> : null}
       </View>
     </Screen>
   );

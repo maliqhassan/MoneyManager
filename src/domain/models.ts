@@ -247,6 +247,19 @@ export interface RecurringTransaction extends SyncedEntity {
   autoPost: boolean;
   timeZone: string;
   isActive: boolean;
+  status: 'active' | 'paused' | 'ended';
+  /** Occurrences before this date are never due (start date, or the last resume). */
+  activeFrom: IsoDate;
+  reminderDaysBefore: number | null;
+  tagNames: string[];
+}
+
+/** The user's decision for one scheduled date of a recurring rule. */
+export interface RecurringOccurrence extends SyncedEntity {
+  recurringTransactionId: Uuid;
+  occurrenceDate: IsoDate;
+  status: 'posted' | 'skipped';
+  transactionId: Uuid | null;
 }
 
 export interface Bill extends SyncedEntity {

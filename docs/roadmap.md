@@ -140,11 +140,26 @@ objects for deleted receipts before account deletion.
 - Optional server-side cache (scheduled Edge Function writing
   `exchange_rates`) to reduce per-device downloads.
 
-## Later — Notifications
+## Phase 7 — Recurring transactions, reminders & upcoming cash flow ✅
 
-- `expo-notifications`: bill reminders from the stored reminder settings
-  (time-zone aware, no duplicates, cancelled on archive, rescheduled on
-  change), budget threshold alerts.
+- Recurring income/expense rules (daily, weekly, every 2 weeks, monthly,
+  every 3 months, yearly, custom interval; end date; pause / resume /
+  cancel) on the shared anchor-based recurrence engine (no month-end drift).
+- Occurrences confirmed by default (or added automatically when the app
+  opens); idempotent per (rule, date) locally and on the server; deleted
+  generated transactions are never recreated without "Add again".
+- Planning → Upcoming: expected income/expenses for 7/14/30 days from rules
+  and unpaid bills, per currency, combined only with known rates.
+- Local reminders (`expo-notifications`) for rules and bills: permission
+  asked when turned on, deterministic identifiers, reconciled on start,
+  foreground and changes.
+- Supabase migration `20261019090000_recurring_rules.sql` (needs approval to
+  apply) + local migration 6.
+
+## Later — Notifications follow-ups
+
+- Budget threshold alerts; notification actions (add / skip from the
+  notification itself).
 
 ## Later — Reports & dashboard
 
