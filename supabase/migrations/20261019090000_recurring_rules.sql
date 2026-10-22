@@ -83,11 +83,15 @@ create policy "Users update own rows" on public.recurring_occurrences for update
   using (user_id = (select auth.uid()))
   with check (user_id = (select auth.uid()));
 
--- A generated transaction must belong to the rule's account owner and use the
--- rule's currency; rules only produce income or expenses.
+-- A rule produces income or expenses only, in its account's currency. On
+-- update this is re-checked only when type, currency or account change: clients
+-- PATCH whole rows, and a status-only change must not be rejected because the
+-- account's currency was changed after the rule was created. search_path is
+-- pinned; every object is schema-qualified.
 create or replace function app.check_recurring_rule()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   if new.type not in ('expense', 'income') then
@@ -101,6 +105,13 @@ begin
 end;
 $$;
 
-create trigger check_recurring_rule
-  before insert or update of type, currency, account_id on public.recurring_transactions
+create trigger check_recurring_rule_insert
+  before insert on public.recurring_transactions
   for each row execute function app.check_recurring_rule();
+create trigger check_recurring_rule_update
+  before update of type, currency, account_id on public.recurring_transactions
+  for each row
+  when (old.type is distinct from new.type
+        or old.currency is distinct from new.currency
+        or old.account_id is distinct from new.account_id)
+  execute function app.check_recurring_rule();
