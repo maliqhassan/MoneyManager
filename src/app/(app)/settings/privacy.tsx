@@ -5,12 +5,14 @@ import { Alert, View } from 'react-native';
 import { Badge, Button, Card, Screen, Text } from '@/components/ui';
 import { FormError } from '@/features/auth/components/FormError';
 import { useSignOut } from '@/features/auth/hooks/useSignOut';
+import { useData } from '@/providers/DataProvider';
 import { makeStyles } from '@/theme';
 
 export default function PrivacyScreen() {
   const { t } = useTranslation();
   const styles = useStyles();
-  const { requestDeleteAccount, busy } = useSignOut();
+  const { requestDeleteAccount, eraseLocalData, busy } = useSignOut();
+  const { mode } = useData();
   const [deleteError, setDeleteError] = useState<unknown>(null);
 
   const confirmDelete = () =>
@@ -20,6 +22,16 @@ export default function PrivacyScreen() {
         text: t('more.deleteAccount'),
         style: 'destructive',
         onPress: () => void requestDeleteAccount(setDeleteError),
+      },
+    ]);
+
+  const confirmErase = () =>
+    Alert.alert(t('privacy.eraseTitle'), t('privacy.eraseConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('privacy.erase'),
+        style: 'destructive',
+        onPress: () => void eraseLocalData().catch(setDeleteError),
       },
     ]);
 
@@ -54,16 +66,18 @@ export default function PrivacyScreen() {
       </Card>
       <Card>
         <View style={styles.block}>
-          <Text variant="heading">{t('privacy.deleteTitle')}</Text>
+          <Text variant="heading">
+            {mode === 'local' ? t('privacy.eraseTitle') : t('privacy.deleteTitle')}
+          </Text>
           <Text variant="body" tone="textSecondary">
-            {t('privacy.deleteBody')}
+            {mode === 'local' ? t('privacy.eraseBody') : t('privacy.deleteBody')}
           </Text>
           <Button
-            label={t('more.deleteAccount')}
+            label={mode === 'local' ? t('privacy.erase') : t('more.deleteAccount')}
             variant="destructive"
             icon="trash-outline"
             loading={busy}
-            onPress={confirmDelete}
+            onPress={mode === 'local' ? confirmErase : confirmDelete}
           />
           <FormError error={deleteError} />
         </View>

@@ -133,6 +133,25 @@ writes (2 s debounce), and every 5 minutes while foregrounded. Overlapping calls
 share one run (single flight). In `offline` auth status the scheduler first
 restores the session when the network returns.
 
+Whether an **automatic** trigger may start a run is decided by
+`sync/autoSync.ts` from how the last run ended. Every run reports through
+`SyncEngine.onRunFinished`, including "Sync now" and pull-to-refresh, which are
+never held back.
+
+| Last run | Automatic sync |
+| --- | --- |
+| success | normal |
+| offline | waits for reconnect / foreground |
+| transient (network, timeout, 5xx, unknown) | retry timer 5 s · 2^(n−1), capped at 5 min, 50–100 % jitter; reconnect / foreground may retry sooner |
+| `server_not_ready` (server schema behind the app) | **all** automatic triggers wait, reconnect included (going offline does not reset this); a timer probes after ~1 min, doubling up to 30 min (with jitter); the first successful probe resumes normal sync |
+| `unauthorized` | one token refresh (`refreshAuthSession`); if it works, retry at once, otherwise only foregrounding retries. If Supabase ends the session the user signs in again; the device database and its queue are kept |
+
+Queued changes are never dropped or marked failed by any of these. The last
+error stays in the status until a run settles, so the server-update message
+does not flicker while a probe runs. The UI status (`features/sync/syncDisplay.ts`)
+is one of: syncing, waiting to sync, up to date, offline, sign-in needs
+renewing, server update needed.
+
 ## Guarantees (tested in `src/sync/__tests__`)
 
 - New rows push with correct type conversion; sync columns never sent.

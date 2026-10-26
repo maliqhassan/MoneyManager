@@ -1,14 +1,12 @@
 import * as SystemUI from 'expo-system-ui';
 import { createContext, type PropsWithChildren, useEffect, useMemo, useState } from 'react';
-import { AccessibilityInfo, useColorScheme } from 'react-native';
+import { AccessibilityInfo } from 'react-native';
 
-import { useSettingsStore } from '@/stores/settingsStore';
-
-import { type ColorScheme, darkColors, lightColors } from './colors';
+import { type ColorScheme, lightColors } from './colors';
 import { elevation, MIN_TOUCH_TARGET, radius, spacing, typography } from './tokens';
 
+/** The app has a single light theme (no dark mode). */
 export interface Theme {
-  scheme: 'light' | 'dark';
   colors: ColorScheme;
   spacing: typeof spacing;
   radius: typeof radius;
@@ -19,10 +17,9 @@ export interface Theme {
   reduceMotion: boolean;
 }
 
-export function buildTheme(scheme: 'light' | 'dark', reduceMotion: boolean): Theme {
+export function buildTheme(reduceMotion: boolean): Theme {
   return {
-    scheme,
-    colors: scheme === 'dark' ? darkColors : lightColors,
+    colors: lightColors,
     spacing,
     radius,
     typography,
@@ -32,7 +29,7 @@ export function buildTheme(scheme: 'light' | 'dark', reduceMotion: boolean): The
   };
 }
 
-export const ThemeContext = createContext<Theme>(buildTheme('light', false));
+export const ThemeContext = createContext<Theme>(buildTheme(false));
 
 function useReduceMotion(): boolean {
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -49,14 +46,8 @@ function useReduceMotion(): boolean {
 }
 
 export function ThemeProvider({ children }: PropsWithChildren) {
-  const systemScheme = useColorScheme();
-  const themeMode = useSettingsStore((s) => s.themeMode);
   const reduceMotion = useReduceMotion();
-
-  const scheme: 'light' | 'dark' =
-    themeMode === 'system' ? (systemScheme === 'dark' ? 'dark' : 'light') : themeMode;
-
-  const theme = useMemo(() => buildTheme(scheme, reduceMotion), [scheme, reduceMotion]);
+  const theme = useMemo(() => buildTheme(reduceMotion), [reduceMotion]);
 
   useEffect(() => {
     // Root view background shows during transitions and keyboard animations.

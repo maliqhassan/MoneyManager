@@ -4,6 +4,7 @@ import {
   budgetPeriodsInRange,
   categorySpending,
   compareAmounts,
+  dailySpending,
   type FlowRow,
   merchantSpending,
   monthlyTrend,
@@ -125,6 +126,39 @@ const row = (patch: Partial<FlowRow>): FlowRow => ({
   baseMinor: -1_000,
   count: 1,
   ...patch,
+});
+
+describe('daily spending', () => {
+  it('lists every day of the range with expenses minus refunds; income is ignored', () => {
+    const result = dailySpending(
+      [
+        row({ localDate: '2026-10-02', baseMinor: -1_250 }),
+        row({ localDate: '2026-10-02', type: 'refund', amountMinor: 250, baseMinor: 250 }),
+        row({ localDate: '2026-10-03', type: 'income', amountMinor: 9_000, baseMinor: 9_000 }),
+        row({ localDate: '2026-10-04', type: 'refund', amountMinor: 500, baseMinor: 500 }),
+      ],
+      '2026-10-01',
+      '2026-10-04',
+    );
+    expect(result).toEqual({
+      complete: true,
+      days: [
+        { date: '2026-10-01', spendingMinor: 0 },
+        { date: '2026-10-02', spendingMinor: 1_000 },
+        { date: '2026-10-03', spendingMinor: 0 },
+        { date: '2026-10-04', spendingMinor: 0 }, // refunds alone never show as negative
+      ],
+    });
+  });
+
+  it('reports amounts left out for a missing rate', () => {
+    const result = dailySpending(
+      [row({ localDate: '2026-10-01', currency: 'EUR', baseMinor: null })],
+      '2026-10-01',
+      '2026-10-01',
+    );
+    expect(result).toEqual({ complete: false, days: [{ date: '2026-10-01', spendingMinor: 0 }] });
+  });
 });
 
 describe('cash flow', () => {

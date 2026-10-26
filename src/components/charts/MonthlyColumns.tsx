@@ -113,7 +113,6 @@ export function MonthlyColumns({
                 tone={isSelected ? 'text' : 'textMuted'}
                 numberOfLines={1}
                 maxFontSizeMultiplier={MAX_FONT_SCALE_DENSE}
-                style={styles.label}
               >
                 {monthLabel(p)}
               </Text>
@@ -155,6 +154,5 @@ const useStyles = makeStyles((t) => ({
     borderColor: t.colors.borderStrong,
     borderRadius: 3,
   },
-  label: { fontSize: 11 },
   zeroLine: { alignSelf: 'stretch', height: 1, backgroundColor: t.colors.borderStrong },
 }));

@@ -8,6 +8,7 @@ import { initAuth } from '@/features/auth/services/authService';
 import { AppProviders } from '@/providers/AppProviders';
 import { logger } from '@/services/monitoring/logger';
 import { selectIsAuthenticated, useAuthStore } from '@/stores/authStore';
+import { useLocalModeStore } from '@/stores/localModeStore';
 
 export { RouteErrorBoundary as ErrorBoundary } from '@/components/app/RouteErrorBoundary';
 
@@ -38,14 +39,16 @@ function HideSplash() {
 }
 
 /**
- * Route groups are guarded declaratively: only the stack matching the auth
- * state exists, so signed-out users cannot reach (app) routes even via deep
- * links, and signed-in users never see the auth screens.
+ * Route groups are guarded declaratively. (app) exists for a signed-in
+ * account or for local-only use (no account); the auth screens exist while
+ * not signed in — including during local-only use, so "Sign in to sync" can
+ * open them. Signed-in users never see the auth screens.
  */
 function RootNavigator() {
   const status = useAuthStore((s) => s.status);
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const isPasswordRecovery = useAuthStore((s) => s.isPasswordRecovery);
+  const isLocalOnly = useLocalModeStore((s) => s.guestId !== null);
 
   useEffect(() => {
     initAuth().catch((error: unknown) => {
@@ -62,7 +65,7 @@ function RootNavigator() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={isAuthenticated && !isPasswordRecovery}>
+      <Stack.Protected guard={(isAuthenticated || isLocalOnly) && !isPasswordRecovery}>
         <Stack.Screen name="(app)" />
       </Stack.Protected>
       <Stack.Protected guard={!isAuthenticated}>

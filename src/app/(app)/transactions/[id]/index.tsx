@@ -14,6 +14,7 @@ import {
   MoneyText,
   Screen,
   SectionHeader,
+  TagChip,
   Text,
 } from '@/components/ui';
 import { localTimeInZone } from '@/domain/dates/zoned';
@@ -231,6 +232,23 @@ export default function TransactionDetailScreen() {
         </Pressable>
       ) : null}
 
+      {tx.recurringTransactionId ? (
+        <Pressable
+          accessibilityRole="link"
+          onPress={() => router.push(`/recurring/${tx.recurringTransactionId}` as Href)}
+          style={styles.link}
+        >
+          <Icon name="repeat-outline" size={18} tone="primary" />
+          <Text variant="body" tone="primary" style={styles.flex}>
+            {tx.recurrenceDate
+              ? t('transactions.detail.fromRecurringOn', {
+                  date: formatter.date(tx.recurrenceDate, 'medium'),
+                })
+              : t('transactions.detail.fromRecurring')}
+          </Text>
+        </Pressable>
+      ) : null}
+
       {tx.notes ? (
         <Card>
           <Text variant="bodySmall" tone="textSecondary">
@@ -247,7 +265,7 @@ export default function TransactionDetailScreen() {
           accessibilityLabel={`${t('transactions.detail.tags')}: ${detail.tags.map((tag) => tag.name).join(', ')}`}
         >
           {detail.tags.map((tag) => (
-            <Badge key={tag.id} label={tag.name} tone="primary" />
+            <TagChip key={tag.id} name={tag.name} />
           ))}
         </View>
       ) : null}

@@ -1,7 +1,7 @@
 import { type Href, router } from 'expo-router';
 import { useCallback } from 'react';
 
-import { useAuthStore } from '@/stores/authStore';
+import { useActiveUserId } from '@/stores/localModeStore';
 
 import { nextStep, type OnboardingDraft, type OnboardingStep } from './model';
 import { useOnboardingStore } from './store';
@@ -12,7 +12,7 @@ export function onboardingHref(step: OnboardingStep): Href {
 
 /** Current user's onboarding progress and navigation helpers. */
 export function useOnboarding() {
-  const userId = useAuthStore((s) => s.user?.id ?? '');
+  const userId = useActiveUserId();
   const progress = useOnboardingStore((s) => s.byUser[userId]);
   const setStep = useOnboardingStore((s) => s.setStep);
   const updateDraftFor = useOnboardingStore((s) => s.updateDraft);

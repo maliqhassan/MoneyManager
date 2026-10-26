@@ -1,7 +1,8 @@
-import type { PropsWithChildren } from 'react';
+import { type PropsWithChildren, useRef } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useKeyboardOverlap } from '@/hooks/useKeyboard';
 import { makeStyles, useTheme } from '@/theme';
 
 import { IconButton } from './IconButton';
@@ -24,6 +25,9 @@ export function BottomSheet({ visible, onClose, title, closeLabel, children }: B
   const theme = useTheme();
   const styles = useStyles();
   const insets = useSafeAreaInsets();
+  // A search field in the sheet must stay above the keyboard.
+  const rootRef = useRef<View>(null);
+  const keyboard = useKeyboardOverlap(rootRef, visible);
 
   return (
     <Modal
@@ -34,7 +38,11 @@ export function BottomSheet({ visible, onClose, title, closeLabel, children }: B
       statusBarTranslucent
       navigationBarTranslucent
     >
-      <View style={styles.root}>
+      <View
+        style={[styles.root, { paddingTop: insets.top + theme.spacing.xl }]}
+        ref={rootRef}
+        onLayout={keyboard.onLayout}
+      >
         <Pressable
           style={styles.backdrop}
           onPress={onClose}
@@ -42,7 +50,10 @@ export function BottomSheet({ visible, onClose, title, closeLabel, children }: B
           accessibilityLabel={closeLabel}
         />
         <View
-          style={[styles.sheet, { paddingBottom: insets.bottom + theme.spacing.lg }]}
+          style={[
+            styles.sheet,
+            { paddingBottom: Math.max(insets.bottom, keyboard.overlap) + theme.spacing.lg },
+          ]}
           accessibilityViewIsModal
         >
           <View style={styles.handle} />
@@ -64,8 +75,11 @@ const useStyles = makeStyles((t) => ({
     backgroundColor: t.colors.surfaceRaised,
     borderTopStartRadius: t.radius.xl,
     borderTopEndRadius: t.radius.xl,
+    borderCurve: 'continuous',
     paddingHorizontal: t.spacing.lg,
     gap: t.spacing.sm,
+    // Tall content (long option lists) shrinks instead of pushing the header off-screen.
+    maxHeight: '100%',
     ...t.elevation.medium,
   },
   handle: {

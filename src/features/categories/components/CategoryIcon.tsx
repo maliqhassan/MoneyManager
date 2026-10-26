@@ -15,15 +15,17 @@ export function resolveCategoryColor(color: string | null | undefined): string {
   return color && /^#[0-9A-Fa-f]{6}$/.test(color) ? color : ACCOUNT_COLORS[8];
 }
 
-/** Colored circle with a white glyph. Decorative — rows carry the name. */
+/** Colored circle (or rounded square) with a white glyph. Decorative — rows carry the name. */
 export function CategoryIcon({
   icon,
   color,
   size = 36,
+  shape = 'circle',
 }: {
   icon: string | null | undefined;
   color: string | null | undefined;
   size?: number;
+  shape?: 'circle' | 'rounded';
 }) {
   return (
     <View
@@ -32,7 +34,7 @@ export function CategoryIcon({
       style={{
         width: size,
         height: size,
-        borderRadius: size / 2,
+        borderRadius: shape === 'circle' ? size / 2 : size * 0.3,
         backgroundColor: resolveCategoryColor(color),
         alignItems: 'center',
         justifyContent: 'center',

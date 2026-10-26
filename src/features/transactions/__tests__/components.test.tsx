@@ -30,6 +30,7 @@ const item = (patch: Partial<TransactionListItem> = {}): TransactionListItem => 
   counterpartAccountName: null,
   refundOfTransactionId: null,
   hasReceipt: false,
+  isRecurring: false,
   ...patch,
 });
 

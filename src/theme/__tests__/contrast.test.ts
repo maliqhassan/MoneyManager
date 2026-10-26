@@ -1,4 +1,4 @@
-import { type ColorScheme, darkColors, lightColors } from '../colors';
+import { type ColorScheme, lightColors } from '../colors';
 import { ACCOUNT_COLORS } from '../tokens';
 
 function luminance(hex: string): number {
@@ -20,6 +20,9 @@ const textPairs: [keyof ColorScheme, keyof ColorScheme][] = [
   ['textSecondary', 'background'],
   ['textSecondary', 'surface'],
   ['textMuted', 'surface'],
+  ['textMuted', 'background'],
+  ['primary', 'background'],
+  ['textSecondary', 'surfaceMuted'],
   ['onPrimary', 'primary'],
   ['onPrimaryMuted', 'primaryMuted'],
   ['primary', 'surface'],
@@ -31,28 +34,21 @@ const textPairs: [keyof ColorScheme, keyof ColorScheme][] = [
   ['warning', 'warningMuted'],
 ];
 
-describe.each([
-  ['light', lightColors],
-  ['dark', darkColors],
-])('%s theme contrast', (_name, colors) => {
+describe('light theme contrast', () => {
   it.each(textPairs)('%s on %s meets WCAG AA', (fg, bg) => {
-    expect(contrast(colors[fg], colors[bg])).toBeGreaterThanOrEqual(AA_TEXT);
+    expect(contrast(lightColors[fg], lightColors[bg])).toBeGreaterThanOrEqual(AA_TEXT);
   });
 });
 
-describe.each([
-  ['light', lightColors],
-  ['dark', darkColors],
-])('%s chart marks', (_name, colors) => {
+describe('chart marks', () => {
   // WCAG 1.4.11: graphical objects need 3:1 against adjacent colours.
   it.each(['chartIncome', 'chartSpending'] as const)('%s is visible on the surface', (token) => {
-    expect(contrast(colors[token], colors.surface)).toBeGreaterThanOrEqual(3);
+    expect(contrast(lightColors[token], lightColors.surface)).toBeGreaterThanOrEqual(3);
   });
 });
 
 describe('account accent colors', () => {
   it.each([...ACCOUNT_COLORS])('white glyph on %s meets 4.5:1', (color) => {
     expect(contrast(lightColors.onAccent, color)).toBeGreaterThanOrEqual(AA_TEXT);
-    expect(darkColors.onAccent).toBe(lightColors.onAccent);
   });
 });

@@ -108,6 +108,7 @@ function toListItem(r: ListRow): TransactionListItem {
     counterpartAccountName: r.counterpart_account_name,
     refundOfTransactionId: r.refund_of_transaction_id,
     hasReceipt: r.has_receipt === 1,
+    isRecurring: r.recurring_transaction_id !== null,
   };
 }
 
@@ -154,6 +155,7 @@ export class SqliteTransactionRepository implements TransactionRepository {
       where.push(`t.type IN (${placeholders(filter.types.length)})`);
       params.push(...filter.types);
     }
+    if (filter.recurringOnly) where.push('t.recurring_transaction_id IS NOT NULL');
     if (filter.from) {
       where.push('t.local_date >= ?');
       params.push(filter.from);

@@ -1,8 +1,8 @@
 import { palette } from './tokens';
 
 /**
- * Semantic color roles. Components use only these names, so light/dark (and
- * any future brand theme) are a matter of swapping one object.
+ * Semantic color roles. Components use only these names, never palette
+ * values. The app ships a single light theme.
  *
  * Text/background pairs meet WCAG AA (≥ 4.5:1 for body text); see
  * src/theme/__tests__/contrast.test.ts.
@@ -51,23 +51,23 @@ export interface ColorScheme {
 }
 
 export const lightColors: ColorScheme = {
-  background: palette.gray50,
+  background: palette.violet50,
   surface: palette.white,
   surfaceRaised: palette.white,
-  surfaceMuted: palette.gray100,
-  border: palette.gray200,
-  borderStrong: palette.gray300,
+  surfaceMuted: palette.lavender100,
+  border: palette.violet200,
+  borderStrong: palette.violet300,
 
-  text: palette.gray900,
-  textSecondary: palette.gray600,
-  textMuted: palette.gray500,
+  text: palette.ink900,
+  textSecondary: palette.ink600,
+  textMuted: palette.ink500,
   textInverse: palette.white,
 
-  primary: palette.blue600,
-  primaryPressed: palette.blue700,
+  primary: palette.violet600,
+  primaryPressed: palette.violet700,
   onPrimary: palette.white,
-  primaryMuted: palette.blue50,
-  onPrimaryMuted: palette.blue700,
+  primaryMuted: palette.violet100,
+  onPrimaryMuted: palette.violet700,
 
   positive: palette.green600,
   positiveMuted: palette.green50,
@@ -77,45 +77,10 @@ export const lightColors: ColorScheme = {
   warningMuted: palette.amber50,
 
   onAccent: palette.white,
-  focusRing: palette.blue500,
+  focusRing: palette.violet500,
   overlay: 'rgba(11, 15, 20, 0.45)',
   skeleton: palette.gray100,
   tabBar: palette.white,
-  chartIncome: palette.blue600,
-  chartSpending: palette.orange500,
-};
-
-export const darkColors: ColorScheme = {
-  background: palette.gray900,
-  surface: palette.gray850,
-  surfaceRaised: palette.gray800,
-  surfaceMuted: palette.gray800,
-  border: palette.gray700,
-  borderStrong: palette.gray600,
-
-  text: palette.gray50,
-  textSecondary: palette.gray300,
-  textMuted: palette.gray400,
-  textInverse: palette.gray900,
-
-  primary: palette.blue400,
-  primaryPressed: palette.blue300,
-  onPrimary: palette.gray900,
-  primaryMuted: palette.blue900,
-  onPrimaryMuted: palette.blue100,
-
-  positive: palette.green400,
-  positiveMuted: palette.green900,
-  negative: palette.red400,
-  negativeMuted: palette.red900,
-  warning: palette.amber400,
-  warningMuted: palette.amber900,
-
-  onAccent: palette.white,
-  focusRing: palette.blue300,
-  overlay: 'rgba(0, 0, 0, 0.6)',
-  skeleton: palette.gray800,
-  tabBar: palette.gray850,
-  chartIncome: palette.blue500,
-  chartSpending: palette.orange600,
+  chartIncome: palette.violet600,
+  chartSpending: palette.coral500,
 };

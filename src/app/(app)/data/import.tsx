@@ -30,7 +30,7 @@ import { EMPTY_MAPPING, IMPORT_STEPS, useImportStore } from '@/features/data/imp
 import { useFormatter } from '@/i18n/FormatContext';
 import { useRepositories } from '@/providers/DataProvider';
 import { discardPickedCopy, pickCsvFile, readCsvText } from '@/services/data/dataFiles';
-import { useSyncStore } from '@/stores/syncStore';
+import { selectSavedOffline, useSyncStore } from '@/stores/syncStore';
 import { makeStyles } from '@/theme';
 
 const VISIBLE_STEPS = ['file', 'columns', 'formats', 'mapping', 'review'] as const;
@@ -47,7 +47,7 @@ export default function ImportScreen() {
   const repos = useRepositories();
   const queryClient = useQueryClient();
   const categoryName = useCategoryName();
-  const isOnline = useSyncStore((s) => s.isOnline);
+  const isOnline = !useSyncStore(selectSavedOffline);
   const state = useImportStore();
   const accounts = useAccounts({ includeArchived: true });
   const categories = useCategories({ includeArchived: true });

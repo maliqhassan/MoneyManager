@@ -12,8 +12,10 @@ import {
 import { ErrorState, LoadingState, Screen } from '@/components/ui';
 import { deleteUserDatabase, type OpenedDatabase, openUserDatabase } from '@/database/openDatabase';
 import type { SqlDatabase } from '@/database/types';
+import { deviceFormatSettings } from '@/i18n/locale';
 import { newId, nowIso } from '@/lib/ids';
 import { createRepositories, type Repositories } from '@/repositories';
+import { bootstrapLocalProfile } from '@/repositories/sqlite/localBootstrap';
 import { logger } from '@/services/monitoring/logger';
 import { getSupabase } from '@/services/supabase/client';
 import { useSyncStore } from '@/stores/syncStore';
@@ -22,6 +24,8 @@ import { queryRootsFor } from './queryDependencies';
 import { SyncEngine } from '@/sync/SyncEngine';
 
 export interface DataContextValue {
+  /** 'local': no account — nothing syncs; 'account': signed in, syncs. */
+  mode: 'account' | 'local';
   db: SqlDatabase;
   repositories: Repositories;
   syncEngine: SyncEngine;
@@ -50,11 +54,17 @@ export function useRepositories(): Repositories {
 }
 
 /**
- * Composition root for a signed-in user: opens their local database, runs
- * migrations, builds repositories and the sync engine. Children render only
- * once the database is ready, so screens can always query locally.
+ * Composition root for the active profile (an account, or local-only use):
+ * opens its local database, runs migrations, builds repositories and the sync
+ * engine. A local-only profile first gets the preferences row and default
+ * categories the server would create at sign-up. Children render only once
+ * the database is ready, so screens can always query locally.
  */
-export function DataProvider({ userId, children }: PropsWithChildren<{ userId: string }>) {
+export function DataProvider({
+  userId,
+  mode = 'account',
+  children,
+}: PropsWithChildren<{ userId: string; mode?: 'account' | 'local' }>) {
   const queryClient = useQueryClient();
   const [state, setState] = useState<OpenState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -65,6 +75,25 @@ export function DataProvider({ userId, children }: PropsWithChildren<{ userId: s
     let cancelled = false;
     let handle: OpenedDatabase | null = null;
     openUserDatabase(userId)
+      .then(async (result) => {
+        handle = result;
+        if (mode === 'local') {
+          const device = deviceFormatSettings();
+          await bootstrapLocalProfile(
+            result.db,
+            { userId, newId, now: nowIso },
+            {
+              baseCurrency: device.baseCurrency,
+              locale: device.locale,
+              timeZone: device.timeZone,
+              firstDayOfWeek: device.firstDayOfWeek,
+              language: device.language,
+              region: device.region,
+            },
+          );
+        }
+        return result;
+      })
       .then((result) => {
         handle = result;
         if (cancelled) void result.close();
@@ -78,7 +107,7 @@ export function DataProvider({ userId, children }: PropsWithChildren<{ userId: s
       cancelled = true;
       void handle?.close().catch(() => undefined);
     };
-  }, [userId, attempt]);
+  }, [userId, mode, attempt]);
 
   const retry = () => {
     setState({ status: 'loading' });
@@ -113,6 +142,7 @@ export function DataProvider({ userId, children }: PropsWithChildren<{ userId: s
       onError: (message, e) => logger.error(message, e),
     });
     return {
+      mode,
       db,
       repositories,
       syncEngine,
@@ -127,7 +157,7 @@ export function DataProvider({ userId, children }: PropsWithChildren<{ userId: s
         return () => changeListeners.delete(listener);
       },
     };
-  }, [opened, userId, notifyChange, queryClient, changeListeners]);
+  }, [opened, userId, mode, notifyChange, queryClient, changeListeners]);
 
   useEffect(() => {
     if (!value) return undefined;
@@ -135,6 +165,7 @@ export function DataProvider({ userId, children }: PropsWithChildren<{ userId: s
       useSyncStore.getState().apply(status),
     );
     void value.syncEngine.refreshCounts();
+    useSyncStore.getState().setLocalOnly(value.mode === 'local');
     return unsubscribe;
   }, [value]);
 

@@ -1,4 +1,4 @@
-import { compareDates, type CalendarDate, isWithin } from '../dates/calendar';
+import { addDays, compareDates, type CalendarDate, isWithin } from '../dates/calendar';
 import type { CurrencyCode } from '../currency/currencies';
 import type { BudgetPeriodResult } from '../planning/budgets';
 import { savingsRateBasisPoints } from '../finance/cashflow';
@@ -61,6 +61,39 @@ export function shareBasisPoints(part: number, whole: number): number | null {
 }
 
 // ------------------------------------------------------------ cash flow ----
+
+export interface DailySpending {
+  /** One entry per day from start to end (inclusive); days without spending are 0. */
+  days: { date: CalendarDate; spendingMinor: number }[];
+  /** False when some amounts had no exchange rate and were left out. */
+  complete: boolean;
+}
+
+/**
+ * Spending per day (expenses minus refunds, in the base currency) for a
+ * chart of the period. A day where refunds exceed expenses counts as 0.
+ */
+export function dailySpending(
+  rows: readonly FlowRow[],
+  start: CalendarDate,
+  end: CalendarDate,
+): DailySpending {
+  const byDay = new Map<CalendarDate, number>();
+  let complete = true;
+  for (const r of rows) {
+    if (r.type === 'income') continue;
+    if (r.baseMinor === null) {
+      complete = false;
+      continue;
+    }
+    byDay.set(r.localDate, (byDay.get(r.localDate) ?? 0) - r.baseMinor);
+  }
+  const days: DailySpending['days'] = [];
+  for (let d = start; compareDates(d, end) <= 0; d = addDays(d, 1)) {
+    days.push({ date: d, spendingMinor: Math.max(0, byDay.get(d) ?? 0) });
+  }
+  return { days, complete };
+}
 
 export interface FlowRow extends ReportAmount {
   localDate: CalendarDate;

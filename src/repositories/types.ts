@@ -238,6 +238,8 @@ export interface TransactionFilter {
   minAmount?: string | null;
   maxAmount?: string | null;
   tagNames?: string[];
+  /** Only entries posted by a recurring rule. */
+  recurringOnly?: boolean;
   search?: string;
   /** Extra category ids matching the search (e.g. by translated display name). */
   searchCategoryIds?: Uuid[];
@@ -270,6 +272,8 @@ export interface TransactionListItem {
   counterpartAccountName: string | null;
   refundOfTransactionId: Uuid | null;
   hasReceipt: boolean;
+  /** Posted by a recurring rule. */
+  isRecurring: boolean;
 }
 
 export interface TransactionSplitDetail extends TransactionSplit {

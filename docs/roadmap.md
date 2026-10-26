@@ -3,7 +3,7 @@
 ## Phase 0 — Foundation ✅ (2026-10-07)
 
 Project setup (Expo SDK 57, strict TS, lint/format), Expo Router shell with
-guarded groups, design system (light/dark, AA contrast), i18n + exact
+guarded groups, design system (light theme, AA contrast), i18n + exact
 formatting, domain money/FX/budget calculations (100% tested), Postgres schema
 with RLS + pgTAP tests, SQLite schema + migrations, repository pattern, offline
 sync engine (tested), Supabase Auth (email, Google, recovery, offline session),

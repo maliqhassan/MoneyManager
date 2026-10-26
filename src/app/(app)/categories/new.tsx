@@ -16,6 +16,8 @@ export default function NewCategoryScreen() {
   const parents = useCategories({ kind });
   const { create } = useCategoryMutations();
   if (parents.isLoading) return <LoadingState />;
+  // A new subcategory starts with its parent's colour, so groups read as one.
+  const parent = (parents.data ?? []).find((c) => c.id === params.parentId);
 
   return (
     <Screen keyboard>
@@ -30,7 +32,7 @@ export default function NewCategoryScreen() {
           name: '',
           parentId: params.parentId ?? null,
           icon: 'pricetag-outline',
-          color: ACCOUNT_COLORS[0],
+          color: parent?.color ?? ACCOUNT_COLORS[0],
         }}
         onSubmit={async (values) => {
           const created = await create.mutateAsync({ ...values, kind });

@@ -1,11 +1,18 @@
-import { ActivityIndicator, Pressable, type PressableProps, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, type PressableProps, View } from 'react-native';
 
 import { type ColorScheme, makeStyles, useTheme } from '@/theme';
 
 import { Icon, type IconName } from './Icon';
 import { Text, type TextTone } from './Text';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'destructive';
+/**
+ * - primary: the one main action of a screen (filled brand colour);
+ * - tonal: a secondary action that still needs presence (tinted brand);
+ * - secondary: a neutral outlined action;
+ * - ghost: a text action (links, "See all");
+ * - destructive: deletes or signs out.
+ */
+type Variant = 'primary' | 'tonal' | 'secondary' | 'ghost' | 'destructive';
 type Size = 'md' | 'lg';
 
 export interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> {
@@ -27,11 +34,17 @@ const VARIANT_COLORS: Record<
   }
 > = {
   primary: { bg: 'primary', pressed: 'primaryPressed', fg: 'onPrimary' },
+  tonal: { bg: 'primaryMuted', pressed: 'surfaceMuted', fg: 'primary' },
   secondary: { bg: 'surface', pressed: 'surfaceMuted', fg: 'text', border: 'borderStrong' },
   ghost: { bg: null, pressed: 'surfaceMuted', fg: 'primary' },
   destructive: { bg: 'negativeMuted', pressed: 'surfaceMuted', fg: 'negative' },
 };
 
+/**
+ * Pill-shaped button, 52 pt (lg) or 48 pt (md) tall. Disabled buttons turn
+ * neutral grey (not just faded) so the state reads at a glance; loading shows
+ * a spinner and is announced as busy.
+ */
 export function Button({
   label,
   variant = 'primary',
@@ -47,7 +60,8 @@ export function Button({
   const styles = useStyles();
   const colors = VARIANT_COLORS[variant];
   const isDisabled = disabled || loading;
-  const fg = colors.fg;
+  const inactive = disabled && !loading;
+  const fg: TextTone = inactive && variant !== 'ghost' ? 'textMuted' : colors.fg;
 
   return (
     <Pressable
@@ -63,13 +77,15 @@ export function Button({
         fullWidth && styles.fullWidth,
         {
           backgroundColor:
-            pressed && colors.pressed
-              ? theme.colors[colors.pressed]
-              : colors.bg
-                ? theme.colors[colors.bg]
-                : 'transparent',
-          borderColor: colors.border ? theme.colors[colors.border] : 'transparent',
-          opacity: isDisabled && !loading ? 0.5 : 1,
+            inactive && colors.bg
+              ? theme.colors.surfaceMuted
+              : pressed && colors.pressed
+                ? theme.colors[colors.pressed]
+                : colors.bg
+                  ? theme.colors[colors.bg]
+                  : 'transparent',
+          borderColor: colors.border && !inactive ? theme.colors[colors.border] : 'transparent',
+          opacity: inactive && variant === 'ghost' ? 0.5 : 1,
         },
       ]}
       {...rest}
@@ -80,7 +96,7 @@ export function Button({
         ) : icon ? (
           <Icon name={icon} size={20} tone={fg} />
         ) : null}
-        <Text variant="bodyStrong" tone={fg} numberOfLines={1}>
+        <Text variant={size === 'md' ? 'label' : 'bodyStrong'} tone={fg} numberOfLines={1}>
           {label}
         </Text>
       </View>
@@ -90,13 +106,13 @@ export function Button({
 
 const useStyles = makeStyles((t) => ({
   base: {
-    borderRadius: t.radius.md,
-    borderWidth: StyleSheet.hairlineWidth * 2,
+    borderRadius: t.radius.pill,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: t.spacing.lg,
+    paddingHorizontal: t.spacing.xl,
   },
-  md: { minHeight: t.minTouchTarget },
+  md: { minHeight: t.minTouchTarget, paddingHorizontal: t.spacing.lg },
   lg: { minHeight: 52 },
   fullWidth: { alignSelf: 'stretch' },
   content: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm },

@@ -63,9 +63,6 @@ export const IMPORT_ROW_STATUSES = [
 ] as const;
 export type ImportRowStatus = (typeof IMPORT_ROW_STATUSES)[number];
 
-export const THEME_MODES = ['system', 'light', 'dark'] as const;
-export type ThemeMode = (typeof THEME_MODES)[number];
-
 /** 0 = Sunday … 6 = Saturday (matches JS Date#getUTCDay). */
 export const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;
 export type Weekday = (typeof WEEKDAYS)[number];

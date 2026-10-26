@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
@@ -12,6 +12,7 @@ import { FormError } from '@/features/auth/components/FormError';
 import { type SignInValues, signInSchema } from '@/features/auth/schemas';
 import { signInWithEmail, signInWithGoogle } from '@/features/auth/services/authService';
 import { toAppError } from '@/lib/errors';
+import { useLocalModeStore } from '@/stores/localModeStore';
 import { makeStyles } from '@/theme';
 
 export default function SignInScreen() {
@@ -31,12 +32,14 @@ export default function SignInScreen() {
       ? googleSignIn.error
       : null;
   const busy = emailSignIn.isPending || googleSignIn.isPending;
+  // Opened from local-only use (Settings → Back up & sync): data merges on sign-in.
+  const isLocalOnly = useLocalModeStore((s) => s.guestId !== null);
 
   return (
-    <Screen keyboard edges={['top', 'bottom']}>
+    <Screen keyboard edges={['bottom']}>
       <View style={styles.hero}>
         <Text variant="caption" tone="primary" style={styles.brand}>
-          {t('common.appName').toUpperCase()}
+          {t('common.appName')}
         </Text>
         <AuthHeader title={t('auth.welcomeTitle')} subtitle={t('auth.welcomeSubtitle')} />
       </View>
@@ -103,13 +106,29 @@ export default function SignInScreen() {
           <Button label={t('auth.signUp')} variant="ghost" size="md" fullWidth={false} />
         </Link>
       </View>
+      {isLocalOnly ? (
+        <Text variant="bodySmall" tone="textSecondary" align="center">
+          {t('localMode.body')}
+        </Text>
+      ) : (
+        <Button
+          label={t('localMode.continueWithout')}
+          variant="ghost"
+          size="md"
+          disabled={busy}
+          onPress={() => {
+            useLocalModeStore.getState().startGuest();
+            router.replace('/');
+          }}
+        />
+      )}
     </Screen>
   );
 }
 
 const useStyles = makeStyles((t) => ({
-  hero: { marginTop: t.spacing.xxl, gap: t.spacing.sm },
-  brand: { letterSpacing: 1.2, fontWeight: '700' },
+  hero: { marginTop: t.spacing.md, gap: t.spacing.sm },
+  brand: { letterSpacing: 1.2, textTransform: 'uppercase' },
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.md },
   dividerLine: { flex: 1 },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },

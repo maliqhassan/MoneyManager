@@ -37,10 +37,37 @@ same redirect twice (browser result + deep link).
 
 | Group | Guard |
 | --- | --- |
-| `(app)` | authenticated and not in password recovery |
-| `(auth)` | not authenticated |
+| `(app)` | (authenticated **or** local-only use) and not in password recovery |
+| `(auth)` | not authenticated (also during local-only use, so "Sign in to sync" can open it) |
 | `reset-password` | authenticated and in password recovery |
 | `auth/callback` | always (deep-link target) |
+
+## Accounts are optional (local-only use)
+
+The first screen (`(auth)/welcome`) shows three intro slides, then
+**Get started** (no account) or **I already have an account**.
+
+- **Local-only:** `stores/localModeStore.ts` keeps a device-local id that
+  stands in for the user id. Its data lives in its own database file, like an
+  account's. `DataProvider` creates the preferences row and the default
+  category tree locally (`repositories/sqlite/localBootstrap.ts`), which the
+  server would otherwise create at sign-up. Nothing syncs, and messages that
+  say "will sync when online" are suppressed (`syncStore.localOnly`).
+- **Sign in later:** Settings → *Back up & sync* opens sign-in or sign-up.
+  After sign-in, `GuestMergeScreen` first pulls the account's preferences,
+  categories, tags and merchants, then `sync/guestMerge.ts` copies the
+  device's data into the account in one transaction:
+  - default categories map to the account's own (by system key); tags map by
+    name and merchants by normalised name;
+  - every other live row is copied under the account's user id and queued for
+    upload;
+  - the account keeps its preferences if it had finished onboarding;
+    otherwise it takes the local choices.
+
+  On success the local-only database is deleted. On failure nothing changes:
+  retry, or sign out and keep using the device data without an account.
+- **Erase:** in local-only use, Privacy offers *Erase data on this device*
+  instead of *Delete account*.
 
 ## Supabase project setup (required)
 

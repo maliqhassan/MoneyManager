@@ -42,6 +42,20 @@ export const palette = {
   red600: '#C02A35',
   red900: '#43161A',
 
+  // Brand: violet on a soft lavender canvas.
+  violet50: '#F6F5FB',
+  violet100: '#EEEBFF',
+  violet200: '#E8E5F1',
+  violet300: '#D4D0E3',
+  violet500: '#7A66F2',
+  violet600: '#5B45E0',
+  violet700: '#4A34C7',
+  ink900: '#17152B',
+  ink600: '#57546D',
+  ink500: '#706D86',
+  lavender100: '#F1EFF8',
+  coral500: '#E0773A',
+
   amber50: '#FFF5E0',
   amber400: '#F5B544',
   amber700: '#8A5A00',
@@ -62,15 +76,19 @@ export const spacing = {
   xl: 24,
   xxl: 32,
   xxxl: 48,
+  /** Screen side margin. */
+  gutter: 20,
+  /** Between sections of a screen. */
+  section: 28,
 } as const;
 export type SpacingToken = keyof typeof spacing;
 
 export const radius = {
   none: 0,
-  sm: 6,
-  md: 10,
-  lg: 16,
-  xl: 24,
+  sm: 8,
+  md: 12,
+  lg: 20,
+  xl: 28,
   pill: 999,
 } as const;
 export type RadiusToken = keyof typeof radius;
@@ -81,42 +99,97 @@ export const MIN_TOUCH_TARGET = 48;
 /** Upper bound for Dynamic Type scaling on dense UI (tab labels, badges). */
 export const MAX_FONT_SCALE_DENSE = 1.4;
 
-const fontFamily = Platform.select({ ios: 'System', android: 'sans-serif', default: 'System' });
-const fontFamilyMedium = Platform.select({
-  ios: 'System',
-  android: 'sans-serif-medium',
-  default: 'System',
+/**
+ * Two typefaces, embedded at build time (expo-font config plugin):
+ * - Plus Jakarta Sans (600/700/800) for display, titles and the hero amount —
+ *   friendly, geometric, with presence;
+ * - Inter (400/500/600) for everything read or scanned — UI text, labels and
+ *   numbers (tabular figures keep amounts aligned).
+ * On Android the weights are grouped into one family each, so fontWeight
+ * selects the file; on iOS the family name comes from the font files.
+ */
+export const FONT_DISPLAY = Platform.select({
+  ios: 'Plus Jakarta Sans',
+  default: 'PlusJakartaSans',
 });
+export const FONT_TEXT = 'Inter';
 
 type TypeStyle = Pick<
   TextStyle,
-  'fontSize' | 'lineHeight' | 'fontWeight' | 'fontFamily' | 'letterSpacing' | 'fontVariant'
+  | 'fontSize'
+  | 'lineHeight'
+  | 'fontWeight'
+  | 'fontFamily'
+  | 'letterSpacing'
+  | 'fontVariant'
+  | 'textTransform'
 >;
 
 /**
- * Type scale. Body text is 16 to stay readable; nothing below 12. Sizes scale
- * with the OS text-size setting (allowFontScaling is on by default).
+ * Type scale — roughly a major third (×1.25) on a 4-pt grid: 12 · 14 · 16 ·
+ * 20 · 28 · 36. Body text is 16 and nothing is below 12. Larger sizes get
+ * tighter tracking; all-caps labels get +0.075em. Sizes follow the OS text
+ * size (allowFontScaling is on).
  */
 export const typography = {
-  display: { fontFamily, fontSize: 34, lineHeight: 41, fontWeight: '700', letterSpacing: -0.4 },
-  title: { fontFamily, fontSize: 24, lineHeight: 30, fontWeight: '700', letterSpacing: -0.2 },
-  heading: { fontFamily: fontFamilyMedium, fontSize: 18, lineHeight: 24, fontWeight: '600' },
-  body: { fontFamily, fontSize: 16, lineHeight: 24, fontWeight: '400' },
-  bodyStrong: { fontFamily: fontFamilyMedium, fontSize: 16, lineHeight: 24, fontWeight: '600' },
-  label: { fontFamily: fontFamilyMedium, fontSize: 14, lineHeight: 20, fontWeight: '600' },
-  bodySmall: { fontFamily, fontSize: 14, lineHeight: 20, fontWeight: '400' },
-  caption: { fontFamily, fontSize: 12, lineHeight: 16, fontWeight: '400' },
+  display: {
+    fontFamily: FONT_DISPLAY,
+    fontSize: 36,
+    lineHeight: 42,
+    fontWeight: '800',
+    letterSpacing: -0.9,
+  },
+  title: {
+    fontFamily: FONT_DISPLAY,
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  heading: {
+    fontFamily: FONT_DISPLAY,
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  body: { fontFamily: FONT_TEXT, fontSize: 16, lineHeight: 24, fontWeight: '400' },
+  bodyStrong: { fontFamily: FONT_TEXT, fontSize: 16, lineHeight: 24, fontWeight: '600' },
+  label: {
+    fontFamily: FONT_TEXT,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '600',
+    letterSpacing: 0.1,
+  },
+  bodySmall: { fontFamily: FONT_TEXT, fontSize: 14, lineHeight: 20, fontWeight: '400' },
+  caption: {
+    fontFamily: FONT_TEXT,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '500',
+    letterSpacing: 0.2,
+  },
+  /** Section labels: short, all caps, letter-spaced. */
+  overline: {
+    fontFamily: FONT_TEXT,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '600',
+    letterSpacing: 0.9,
+    textTransform: 'uppercase',
+  },
   /** Money amounts: tabular figures keep columns of numbers aligned. */
   amountLarge: {
-    fontFamily,
-    fontSize: 34,
-    lineHeight: 41,
-    fontWeight: '700',
+    fontFamily: FONT_DISPLAY,
+    fontSize: 36,
+    lineHeight: 42,
+    fontWeight: '800',
     fontVariant: ['tabular-nums'],
-    letterSpacing: -0.4,
+    letterSpacing: -0.9,
   },
   amount: {
-    fontFamily: fontFamilyMedium,
+    fontFamily: FONT_TEXT,
     fontSize: 16,
     lineHeight: 24,
     fontWeight: '600',
@@ -125,28 +198,19 @@ export const typography = {
 } as const satisfies Record<string, TypeStyle>;
 export type TypographyVariant = keyof typeof typography;
 
-/** Subtle elevation only — the UI relies on borders and contrast, not heavy shadows. */
+/**
+ * Soft, layered shadows (CSS box-shadow, tinted with the ink colour) — depth
+ * is quiet; borders and contrast do most of the work.
+ */
 export const elevation = {
   none: {},
-  low: Platform.select<ViewStyle>({
-    ios: {
-      shadowColor: palette.black,
-      shadowOpacity: 0.06,
-      shadowRadius: 6,
-      shadowOffset: { width: 0, height: 2 },
-    },
-    default: { elevation: 1 },
-  }),
-  medium: Platform.select<ViewStyle>({
-    ios: {
-      shadowColor: palette.black,
-      shadowOpacity: 0.1,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 6 },
-    },
-    default: { elevation: 4 },
-  }),
-} as const;
+  low: { boxShadow: '0 1px 2px rgba(23, 21, 43, 0.04), 0 2px 8px rgba(23, 21, 43, 0.04)' },
+  medium: { boxShadow: '0 4px 12px rgba(23, 21, 43, 0.06), 0 12px 32px rgba(23, 21, 43, 0.08)' },
+  /** Bottom bar: a soft shadow cast upward instead of a hard line. */
+  bar: { boxShadow: '0 -1px 0 rgba(23, 21, 43, 0.05), 0 -8px 24px rgba(23, 21, 43, 0.06)' },
+  /** The main action (raised +): a violet glow. */
+  brand: { boxShadow: '0 8px 20px rgba(91, 69, 224, 0.35)' },
+} as const satisfies Record<string, ViewStyle>;
 export type ElevationToken = keyof typeof elevation;
 
 export const motion = {

@@ -32,6 +32,11 @@ export interface OptionPickerProps<V extends string> {
   disabled?: boolean;
   /** Text shown in the field (defaults to the selected option's label). */
   displayValue?: string;
+  /**
+   * 'chip': a compact pill without the visible label (label still names it);
+   * 'row': label left, value right, for a FormGroup.
+   */
+  variant?: 'field' | 'chip' | 'row';
 }
 
 /**
@@ -49,6 +54,7 @@ export function OptionPicker<V extends string>({
   searchable = false,
   disabled = false,
   displayValue,
+  variant = 'field',
 }: OptionPickerProps<V>) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -73,10 +79,12 @@ export function OptionPicker<V extends string>({
   };
 
   return (
-    <View style={styles.container}>
-      <Text variant="label" tone="textSecondary">
-        {label}
-      </Text>
+    <View style={variant === 'field' ? styles.container : styles.chipContainer}>
+      {variant === 'field' ? (
+        <Text variant="label" tone="textSecondary">
+          {label}
+        </Text>
+      ) : null}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${label}: ${shown}`}
@@ -85,7 +93,7 @@ export function OptionPicker<V extends string>({
         disabled={disabled}
         onPress={() => setOpen(true)}
         style={({ pressed }) => [
-          styles.field,
+          variant === 'chip' ? styles.chip : variant === 'row' ? styles.row : styles.field,
           {
             backgroundColor: disabled
               ? theme.colors.surfaceMuted
@@ -95,12 +103,23 @@ export function OptionPicker<V extends string>({
           },
         ]}
       >
+        {variant === 'row' ? (
+          <Text variant="label" tone="textSecondary" style={styles.rowLabel}>
+            {label}
+          </Text>
+        ) : null}
         {selected?.leading ? <View style={styles.leading}>{selected.leading}</View> : null}
         <Text
-          variant="body"
+          variant={variant === 'chip' ? 'label' : 'body'}
           tone={selected || displayValue ? 'text' : 'textMuted'}
           numberOfLines={1}
-          style={styles.value}
+          style={
+            variant === 'chip'
+              ? styles.chipValue
+              : variant === 'row'
+                ? styles.rowValue
+                : styles.value
+          }
         >
           {shown}
         </Text>
@@ -110,7 +129,7 @@ export function OptionPicker<V extends string>({
           <Icon name="chevron-down" size={18} tone="textSecondary" />
         )}
       </Pressable>
-      {hint ? (
+      {hint && variant === 'field' ? (
         <Text variant="bodySmall" tone="textMuted">
           {hint}
         </Text>
@@ -199,6 +218,28 @@ const useStyles = makeStyles((t) => ({
     paddingHorizontal: t.spacing.md,
   },
   value: { flex: 1 },
+  chipContainer: { flexShrink: 1 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.xs,
+    minHeight: t.minTouchTarget,
+    borderRadius: t.radius.pill,
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    paddingStart: t.spacing.sm,
+    paddingEnd: t.spacing.md,
+  },
+  chipValue: { flexShrink: 1 },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.sm,
+    minHeight: 52,
+    paddingHorizontal: t.spacing.lg,
+  },
+  rowLabel: { flex: 1 },
+  rowValue: { flexShrink: 1, textAlign: 'right' },
   leading: { minWidth: 28, alignItems: 'center' },
   searchBox: {
     flexDirection: 'row',
@@ -210,7 +251,7 @@ const useStyles = makeStyles((t) => ({
     minHeight: t.minTouchTarget,
   },
   searchInput: { flex: 1, ...t.typography.body, paddingVertical: t.spacing.sm },
-  list: { maxHeight: 420 },
+  list: { maxHeight: 420, flexShrink: 1 },
   option: {
     flexDirection: 'row',
     alignItems: 'center',

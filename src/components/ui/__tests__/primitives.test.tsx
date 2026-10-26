@@ -66,7 +66,7 @@ describe('state views', () => {
   it('shows a friendly message and never the internal error text', async () => {
     const error = new AppError('network', 'TypeError: fetch failed at internal/stack.js:42');
     await renderWithProviders(<ErrorState error={error} onRetry={() => undefined} />);
-    expect(screen.getByText(/couldn't reach the server/i)).toBeOnTheScreen();
+    expect(screen.getByText(/couldn’t reach the server/i)).toBeOnTheScreen();
     expect(screen.queryByText(/internal\/stack/)).toBeNull();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeOnTheScreen();
   });

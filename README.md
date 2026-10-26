@@ -74,7 +74,7 @@ src/
   hooks/          Cross-feature hooks
   lib/            Errors, ids, query client, secure storage
   validation/     Shared Zod schemas
-  theme/          Design tokens, light/dark palettes, ThemeProvider
+  theme/          Design tokens, light palette, ThemeProvider
   i18n/           i18next setup, locales, exact money/date formatting
   config/         Validated environment configuration
   test/           Test harness (in-memory SQLite, fake remote, render helpers)

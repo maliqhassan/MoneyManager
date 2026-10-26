@@ -35,6 +35,7 @@ export const TEST_FORMAT_SETTINGS: FormatSettings = {
 
 function dataValue(ledger: Ledger): DataContextValue {
   return {
+    mode: 'account',
     db: ledger.db,
     repositories: ledger.repos,
     syncEngine: new SyncEngine({ db: ledger.db, remote: new FakeRemote(), newId: sequentialIds() }),
@@ -57,20 +58,18 @@ export function createTestQueryClient(): QueryClient {
 export function renderWithProviders(
   ui: ReactElement,
   {
-    scheme = 'light',
     format = TEST_FORMAT_SETTINGS,
     ledger,
     queryClient: providedClient,
     ...options
   }: RenderOptions & {
-    scheme?: 'light' | 'dark';
     format?: FormatSettings;
     ledger?: Ledger;
     /** Pass one to drive invalidation from the test (as DataProvider does). */
     queryClient?: QueryClient;
   } = {},
 ) {
-  const theme = buildTheme(scheme, true);
+  const theme = buildTheme(true);
   const formatter = createFormatter(format);
   const queryClient = providedClient ?? createTestQueryClient();
   const data = ledger ? dataValue(ledger) : null;

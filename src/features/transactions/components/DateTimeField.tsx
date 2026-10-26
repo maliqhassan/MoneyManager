@@ -43,6 +43,11 @@ export interface DateTimeFieldProps {
   /** Field label (defaults to "Date" / "Date · Time"). */
   label?: string;
   disabled?: boolean;
+  /**
+   * 'chips': compact date and time pills for a row of chips, no visible label;
+   * 'row': label left, date and time right, for a FormGroup.
+   */
+  variant?: 'field' | 'chips' | 'row';
 }
 
 export function DateTimeField({
@@ -52,6 +57,7 @@ export function DateTimeField({
   showTime = true,
   label,
   disabled = false,
+  variant = 'field',
 }: DateTimeFieldProps) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -90,16 +96,78 @@ export function DateTimeField({
       disabled={disabled}
       onPress={() => open(mode)}
       style={({ pressed }) => [
-        styles.field,
+        variant === 'chips' ? styles.chip : variant === 'row' ? styles.rowValue : styles.field,
         (pressed || disabled) && { backgroundColor: theme.colors.surfaceMuted },
       ]}
     >
       <Icon name={icon} size={18} tone="textSecondary" />
-      <Text variant="body" numberOfLines={1} style={styles.value}>
+      <Text
+        variant={variant === 'chips' ? 'label' : 'body'}
+        numberOfLines={1}
+        style={variant === 'field' ? styles.value : null}
+      >
         {value}
       </Text>
     </Pressable>
   );
+
+  const today = formatter.today();
+  const chipDate = date === today ? t('transactions.today') : formatter.date(date, 'medium');
+
+  const picker =
+    Platform.OS !== 'android' ? (
+      <BottomSheet
+        visible={iosMode !== null}
+        onClose={() => setIosMode(null)}
+        title={iosMode === 'time' ? t('transactions.fields.time') : t('transactions.fields.date')}
+        closeLabel={t('common.close')}
+      >
+        {iosMode ? (
+          <DateTimePicker
+            value={draft}
+            mode={iosMode}
+            display={iosMode === 'date' ? 'inline' : 'spinner'}
+            onChange={(_event, picked) => picked && setDraft(picked)}
+            themeVariant="light"
+            accentColor={theme.colors.primary}
+          />
+        ) : null}
+        <Button
+          label={t('common.done')}
+          onPress={() => {
+            onChange(fromPickerDate(draft));
+            setIosMode(null);
+          }}
+        />
+      </BottomSheet>
+    ) : null;
+
+  if (variant === 'row') {
+    return (
+      <View style={styles.formRow}>
+        <Text variant="label" tone="textSecondary" style={styles.rowLabel}>
+          {label ?? t('transactions.fields.date')}
+        </Text>
+        {field('date', label ?? t('transactions.fields.date'), chipDate, 'calendar-outline')}
+        {showTime
+          ? field('time', t('transactions.fields.time'), formatter.time(time), 'time-outline')
+          : null}
+        {picker}
+      </View>
+    );
+  }
+
+  if (variant === 'chips') {
+    return (
+      <>
+        {field('date', label ?? t('transactions.fields.date'), chipDate, 'calendar-outline')}
+        {showTime
+          ? field('time', t('transactions.fields.time'), formatter.time(time), 'time-outline')
+          : null}
+        {picker}
+      </>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -125,32 +193,7 @@ export function DateTimeField({
         ) : null}
       </View>
 
-      {Platform.OS !== 'android' ? (
-        <BottomSheet
-          visible={iosMode !== null}
-          onClose={() => setIosMode(null)}
-          title={iosMode === 'time' ? t('transactions.fields.time') : t('transactions.fields.date')}
-          closeLabel={t('common.close')}
-        >
-          {iosMode ? (
-            <DateTimePicker
-              value={draft}
-              mode={iosMode}
-              display={iosMode === 'date' ? 'inline' : 'spinner'}
-              onChange={(_event, picked) => picked && setDraft(picked)}
-              themeVariant={theme.scheme}
-              accentColor={theme.colors.primary}
-            />
-          ) : null}
-          <Button
-            label={t('common.done')}
-            onPress={() => {
-              onChange(fromPickerDate(draft));
-              setIosMode(null);
-            }}
-          />
-        </BottomSheet>
-      ) : null}
+      {picker}
     </View>
   );
 }
@@ -172,4 +215,32 @@ const useStyles = makeStyles((t) => ({
     paddingHorizontal: t.spacing.md,
   },
   value: { flex: 1 },
+  formRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.xs,
+    minHeight: 52,
+    paddingStart: t.spacing.lg,
+    paddingEnd: t.spacing.sm,
+  },
+  rowLabel: { flex: 1 },
+  rowValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.xs,
+    minHeight: t.minTouchTarget,
+    paddingHorizontal: t.spacing.sm,
+    borderRadius: t.radius.md,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.xs,
+    minHeight: t.minTouchTarget,
+    borderRadius: t.radius.pill,
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    backgroundColor: t.colors.surface,
+    paddingHorizontal: t.spacing.md,
+  },
 }));

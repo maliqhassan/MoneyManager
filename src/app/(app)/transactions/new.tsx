@@ -2,7 +2,7 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ChoiceChips, EmptyState, LoadingState, Screen } from '@/components/ui';
+import { EmptyState, LoadingState, Screen, SegmentedControl } from '@/components/ui';
 import { localTimeInZone } from '@/domain/dates/zoned';
 import { normalizeMerchant } from '@/domain/merchants/normalize';
 import { useAccounts } from '@/features/accounts/hooks/useAccounts';
@@ -18,7 +18,7 @@ import {
 import { useTransaction, useTransactionMutations } from '@/features/transactions/hooks';
 import { useFormatter } from '@/i18n/FormatContext';
 import { showToast } from '@/stores/toastStore';
-import { useSyncStore } from '@/stores/syncStore';
+import { selectSavedOffline, useSyncStore } from '@/stores/syncStore';
 import type { ReceiptFile } from '@/validation/transactions';
 
 type NewType = 'expense' | 'income' | 'refund' | 'transfer';
@@ -38,7 +38,7 @@ export default function NewTransactionScreen() {
   const accounts = useAccounts({ includeArchived: true });
   const refundOf = useTransaction(params.refundOf ?? '');
   const mutations = useTransactionMutations();
-  const isOnline = useSyncStore((s) => s.isOnline);
+  const savedOffline = useSyncStore(selectSavedOffline);
   const [pendingReceipts, setPendingReceipts] = useState<ReceiptFile[]>([]);
 
   const tz = formatter.settings.timeZone;
@@ -54,17 +54,21 @@ export default function NewTransactionScreen() {
     '';
 
   const done = () => {
-    showToast(isOnline ? t('transactions.toast.saved') : t('transactions.toast.savedOffline'));
+    showToast(savedOffline ? t('transactions.toast.savedOffline') : t('transactions.toast.saved'));
     router.back();
   };
 
   const header = (
     <>
       <Stack.Screen options={{ title: t(`transactions.newTitle.${type}`) }} />
-      <ChoiceChips
+      <SegmentedControl
+        label={t('transactions.fields.type')}
         value={type}
         onChange={(next) => router.setParams({ type: next })}
-        choices={TYPES.map((value) => ({ value, label: t(`transactions.types.${value}`) }))}
+        // Refunds start from the original purchase; the switch offers it only then.
+        segments={(type === 'refund' ? TYPES : TYPES.filter((v) => v !== 'refund')).map(
+          (value) => ({ value, label: t(`transactions.types.${value}`) }),
+        )}
       />
     </>
   );
@@ -138,38 +142,36 @@ export default function NewTransactionScreen() {
   }));
 
   return (
-    <Screen keyboard>
-      {header}
-      <TransactionForm
-        key={type}
-        initialValues={initialValues}
-        accounts={accounts.data ?? []}
-        submitLabel={t('common.save')}
-        receipts={receiptItems}
-        onAddReceipt={(file) => setPendingReceipts((list) => [...list, file])}
-        onRemoveReceipt={(item) => {
-          if (item.localUri) deleteLocalReceipt(item.localUri);
-          setPendingReceipts((list) => list.filter((r) => r.localUri !== item.localUri));
-        }}
-        onSubmit={async (values) => {
-          const currency = (accounts.data ?? []).find((a) => a.id === values.accountId)?.currency;
-          if (!currency) return;
-          const id = await mutations.create.mutateAsync(
-            toTransactionInput(values, currency, formatter.separators.decimal, tz),
-          );
-          const merchantKey = normalizeMerchant(values.payee);
-          if (values.rememberCategory && merchantKey && values.categoryId) {
-            await mutations.rememberCategory.mutateAsync({
-              merchantKey,
-              categoryId: values.categoryId,
-            });
-          }
-          for (const file of pendingReceipts) {
-            await mutations.addReceipt.mutateAsync({ transactionId: id, file });
-          }
-          done();
-        }}
-      />
-    </Screen>
+    <TransactionForm
+      key={type}
+      header={header}
+      initialValues={initialValues}
+      accounts={accounts.data ?? []}
+      submitLabel={t('common.save')}
+      receipts={receiptItems}
+      onAddReceipt={(file) => setPendingReceipts((list) => [...list, file])}
+      onRemoveReceipt={(item) => {
+        if (item.localUri) deleteLocalReceipt(item.localUri);
+        setPendingReceipts((list) => list.filter((r) => r.localUri !== item.localUri));
+      }}
+      onSubmit={async (values) => {
+        const currency = (accounts.data ?? []).find((a) => a.id === values.accountId)?.currency;
+        if (!currency) return;
+        const id = await mutations.create.mutateAsync(
+          toTransactionInput(values, currency, formatter.separators.decimal, tz),
+        );
+        const merchantKey = normalizeMerchant(values.payee);
+        if (values.rememberCategory && merchantKey && values.categoryId) {
+          await mutations.rememberCategory.mutateAsync({
+            merchantKey,
+            categoryId: values.categoryId,
+          });
+        }
+        for (const file of pendingReceipts) {
+          await mutations.addReceipt.mutateAsync({ transactionId: id, file });
+        }
+        done();
+      }}
+    />
   );
 }

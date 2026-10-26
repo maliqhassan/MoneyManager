@@ -2,45 +2,29 @@ import { type Href, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
-import {
-  Button,
-  Card,
-  Divider,
-  Icon,
-  ListItem,
-  Screen,
-  SectionHeader,
-  Text,
-} from '@/components/ui';
-import type { ThemeMode } from '@/domain/enums';
+import { Button, Card, Divider, ListItem, Screen, SectionHeader, Text } from '@/components/ui';
 import { findCountry } from '@/domain/regional/countries';
 import { useSignOut } from '@/features/auth/hooks/useSignOut';
+import { BackupPromptCard } from '@/features/sync/components/BackupPromptCard';
+import { SyncServerUpdateNote } from '@/features/sync/components/SyncServerUpdateNote';
+import { SyncStatusLine } from '@/features/sync/components/SyncStatusLine';
 import { useFormatter } from '@/i18n/FormatContext';
 import { useData } from '@/providers/DataProvider';
 import { useAuthStore } from '@/stores/authStore';
-import { useSettingsStore } from '@/stores/settingsStore';
 import { useSyncStore } from '@/stores/syncStore';
 import { makeStyles } from '@/theme';
 
-const THEME_OPTIONS: {
-  mode: ThemeMode;
-  labelKey: 'more.themeSystem' | 'more.themeLight' | 'more.themeDark';
-}[] = [
-  { mode: 'system', labelKey: 'more.themeSystem' },
-  { mode: 'light', labelKey: 'more.themeLight' },
-  { mode: 'dark', labelKey: 'more.themeDark' },
-];
-
-/** Settings hub. Every row here works; unavailable features are labelled as such. */
+/**
+ * Settings hub, opened from the gear button at the top right of every tab.
+ * Every row here works; unavailable features are labelled as such.
+ */
 export default function SettingsScreen() {
   const { t } = useTranslation();
   const styles = useStyles();
   const formatter = useFormatter();
   const email = useAuthStore((s) => s.user?.email);
-  const themeMode = useSettingsStore((s) => s.themeMode);
-  const setThemeMode = useSettingsStore((s) => s.setThemeMode);
   const sync = useSyncStore();
-  const { syncEngine } = useData();
+  const { syncEngine, mode } = useData();
   const { requestSignOut } = useSignOut();
   const { settings } = formatter;
 
@@ -53,7 +37,8 @@ export default function SettingsScreen() {
     .join(' · ');
 
   return (
-    <Screen edges={[]}>
+    <Screen>
+      {mode === 'local' ? <BackupPromptCard /> : null}
       <Card padding="none">
         <ListItem
           icon="wallet-outline"
@@ -111,58 +96,46 @@ export default function SettingsScreen() {
         />
       </Card>
 
-      <SectionHeader title={t('more.appearance')} />
-      <Card padding="none">
-        {THEME_OPTIONS.map((option, index) => (
-          <View key={option.mode}>
-            {index > 0 ? <Divider inset={16} /> : null}
-            <ListItem
-              title={t(option.labelKey)}
-              onPress={() => setThemeMode(option.mode)}
-              showChevron={false}
-              selected={themeMode === option.mode}
-              accessibilityLabel={`${t('more.theme')}: ${t(option.labelKey)}`}
-              trailing={themeMode === option.mode ? <Icon name="checkmark" tone="primary" /> : null}
-            />
-          </View>
-        ))}
-      </Card>
-
-      <SectionHeader title={t('more.sync')} />
-      <Card>
-        <View style={styles.syncBody}>
-          <Text variant="bodyStrong">{t(`sync.${sync.phase}`)}</Text>
-          <Text variant="bodySmall" tone="textSecondary">
-            {`${t('more.lastSynced')}: ${
-              sync.lastSyncedAt ? formatter.dateTime(sync.lastSyncedAt) : t('more.never')
-            }`}
-          </Text>
-          {sync.pendingCount > 0 ? (
-            <Text variant="bodySmall" tone="textSecondary">
-              {t('more.pendingChanges', { count: sync.pendingCount })}
-            </Text>
-          ) : null}
-          {sync.failedCount > 0 ? (
-            <Text variant="bodySmall" tone="negative">
-              {t('more.failedChanges', { count: sync.failedCount })}
-            </Text>
-          ) : null}
-          {sync.conflictCount > 0 ? (
-            <Text variant="bodySmall" tone="warning">
-              {t('more.conflicts', { count: sync.conflictCount })}
-            </Text>
-          ) : null}
-          <Button
-            label={t('more.syncNow')}
-            variant="secondary"
-            size="md"
-            icon="sync-outline"
-            loading={sync.phase === 'syncing'}
-            disabled={!sync.isOnline}
-            onPress={() => void syncEngine.sync()}
-          />
-        </View>
-      </Card>
+      {mode === 'account' ? (
+        <>
+          <SectionHeader title={t('more.sync')} />
+          <Card>
+            <View style={styles.syncBody}>
+              <SyncStatusLine />
+              <SyncServerUpdateNote />
+              <Text variant="bodySmall" tone="textSecondary">
+                {`${t('more.lastSynced')}: ${
+                  sync.lastSyncedAt ? formatter.dateTime(sync.lastSyncedAt) : t('more.never')
+                }`}
+              </Text>
+              {sync.pendingCount > 0 ? (
+                <Text variant="bodySmall" tone="textSecondary">
+                  {t('more.pendingChanges', { count: sync.pendingCount })}
+                </Text>
+              ) : null}
+              {sync.failedCount > 0 ? (
+                <Text variant="bodySmall" tone="negative">
+                  {t('more.failedChanges', { count: sync.failedCount })}
+                </Text>
+              ) : null}
+              {sync.conflictCount > 0 ? (
+                <Text variant="bodySmall" tone="warning">
+                  {t('more.conflicts', { count: sync.conflictCount })}
+                </Text>
+              ) : null}
+              <Button
+                label={t('more.syncNow')}
+                variant="secondary"
+                size="md"
+                icon="sync-outline"
+                loading={sync.phase === 'syncing'}
+                disabled={!sync.isOnline}
+                onPress={() => void syncEngine.sync()}
+              />
+            </View>
+          </Card>
+        </>
+      ) : null}
 
       <SectionHeader title={t('more.account')} />
       <Card padding="none">
@@ -183,12 +156,16 @@ export default function SettingsScreen() {
           title={t('more.about')}
           onPress={() => router.push('/settings/about')}
         />
-        <Divider inset={64} />
-        <ListItem
-          icon="log-out-outline"
-          title={t('auth.signOut')}
-          onPress={() => void requestSignOut()}
-        />
+        {mode === 'account' ? (
+          <>
+            <Divider inset={64} />
+            <ListItem
+              icon="log-out-outline"
+              title={t('auth.signOut')}
+              onPress={() => void requestSignOut()}
+            />
+          </>
+        ) : null}
       </Card>
     </Screen>
   );

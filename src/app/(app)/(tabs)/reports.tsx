@@ -41,6 +41,7 @@ import {
 import { useReportPeriod } from '@/features/reports/periodStore';
 import { RateNote } from '@/features/exchangeRates/components/RateNote';
 import { useFormatter } from '@/i18n/FormatContext';
+import { TabHeader } from '@/features/navigation/TabHeader';
 import { makeStyles, useTheme } from '@/theme';
 
 const TOP_ROWS = 5;
@@ -51,20 +52,24 @@ const TOP_ROWS = 5;
  * to the exact transactions behind it. No sample data is ever shown.
  */
 export default function ReportsScreen() {
+  const { t } = useTranslation();
   const period = useReportPeriod();
   const styles = useStyles();
   return (
-    <Screen edges={[]}>
-      <PeriodPicker period={period} />
-      <View style={styles.sections}>
-        <CashFlowSection />
-        <TrendSection />
-        <CategoriesSection />
-        <MerchantsSection />
-        <BudgetsSection />
-        <BalancesSection />
-      </View>
-    </Screen>
+    <View style={styles.root}>
+      <TabHeader title={t('tabs.reports')} />
+      <Screen edges={[]}>
+        <PeriodPicker period={period} />
+        <View style={styles.sections}>
+          <CashFlowSection />
+          <TrendSection />
+          <CategoriesSection />
+          <MerchantsSection />
+          <BudgetsSection />
+          <BalancesSection />
+        </View>
+      </Screen>
+    </View>
   );
 }
 
@@ -623,6 +628,7 @@ function BalancesSection() {
 }
 
 const useStyles = makeStyles((t) => ({
+  root: { flex: 1, backgroundColor: t.colors.background },
   sections: { gap: t.spacing.xl },
   section: { gap: t.spacing.sm },
   body: { gap: t.spacing.sm },

@@ -37,6 +37,7 @@ export function MultiChoiceChips<V extends string>({
               accessibilityRole="checkbox"
               accessibilityLabel={choice.label}
               accessibilityState={{ checked: selected }}
+              hitSlop={4}
               onPress={() =>
                 onChange(
                   selected ? values.filter((v) => v !== choice.value) : [...values, choice.value],
@@ -50,7 +51,7 @@ export function MultiChoiceChips<V extends string>({
                     : pressed
                       ? theme.colors.surfaceMuted
                       : theme.colors.surface,
-                  borderColor: selected ? theme.colors.primary : theme.colors.borderStrong,
+                  borderColor: selected ? theme.colors.primary : theme.colors.border,
                 },
               ]}
             >
@@ -76,8 +77,9 @@ const useStyles = makeStyles((t) => ({
     flexDirection: 'row',
     alignItems: 'center',
     gap: t.spacing.xs,
-    minHeight: t.minTouchTarget,
-    paddingHorizontal: t.spacing.md,
+    // 40 pt chip + 4 pt hit slop above and below = 48 pt target.
+    minHeight: 40,
+    paddingHorizontal: t.spacing.lg,
     borderRadius: t.radius.pill,
     borderWidth: 1,
   },

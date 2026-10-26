@@ -1,4 +1,4 @@
-import { Pressable, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 
 import { makeStyles, useTheme } from '@/theme';
 
@@ -18,15 +18,18 @@ export interface ChoiceChipsProps<V extends string> {
   choices: readonly Choice<V>[];
   onChange: (value: V) => void;
   disabled?: boolean;
+  /** 'scroll': one horizontal row that scrolls (many options); default wraps. */
+  layout?: 'wrap' | 'scroll';
 }
 
-/** Single-select chips (radio group semantics). Wraps onto multiple lines. */
+/** Single-select chips (radio group semantics). The selected chip is filled. */
 export function ChoiceChips<V extends string>({
   label,
   value,
   choices,
   onChange,
   disabled = false,
+  layout = 'wrap',
 }: ChoiceChipsProps<V>) {
   const theme = useTheme();
   const styles = useStyles();
@@ -37,48 +40,101 @@ export function ChoiceChips<V extends string>({
           {label}
         </Text>
       ) : null}
-      <View style={styles.row} accessibilityRole="radiogroup" accessibilityLabel={label}>
-        {choices.map((choice) => {
-          const selected = choice.value === value;
-          return (
-            <Pressable
-              key={choice.value}
-              accessibilityRole="radio"
-              accessibilityLabel={choice.label}
-              accessibilityHint={choice.accessibilityHint}
-              accessibilityState={{ selected, checked: selected, disabled }}
-              disabled={disabled}
-              onPress={() => onChange(choice.value)}
-              style={({ pressed }) => [
-                styles.chip,
-                {
-                  backgroundColor: selected
-                    ? theme.colors.primaryMuted
-                    : pressed
-                      ? theme.colors.surfaceMuted
-                      : theme.colors.surface,
-                  borderColor: selected ? theme.colors.primary : theme.colors.borderStrong,
-                  opacity: disabled ? 0.5 : 1,
-                },
-              ]}
-            >
-              {choice.icon ? (
-                <Icon
-                  name={choice.icon}
-                  size={18}
-                  tone={selected ? 'onPrimaryMuted' : 'textSecondary'}
-                />
-              ) : null}
-              <Text
-                variant="label"
-                style={{ color: selected ? theme.colors.onPrimaryMuted : theme.colors.text }}
+      {layout === 'scroll' ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scrollRow}
+          accessibilityRole="radiogroup"
+          accessibilityLabel={label}
+        >
+          {choices.map((choice) => {
+            const selected = choice.value === value;
+            return (
+              <Pressable
+                key={choice.value}
+                accessibilityRole="radio"
+                accessibilityLabel={choice.label}
+                accessibilityHint={choice.accessibilityHint}
+                accessibilityState={{ selected, checked: selected, disabled }}
+                disabled={disabled}
+                onPress={() => onChange(choice.value)}
+                hitSlop={4}
+                style={({ pressed }) => [
+                  styles.chip,
+                  {
+                    backgroundColor: selected
+                      ? theme.colors.primary
+                      : pressed
+                        ? theme.colors.surfaceMuted
+                        : theme.colors.surface,
+                    borderColor: selected ? theme.colors.primary : theme.colors.border,
+                    opacity: disabled ? 0.5 : 1,
+                  },
+                ]}
               >
-                {choice.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+                {choice.icon ? (
+                  <Icon
+                    name={choice.icon}
+                    size={18}
+                    tone={selected ? 'onPrimary' : 'textSecondary'}
+                  />
+                ) : null}
+                <Text
+                  variant="label"
+                  style={{ color: selected ? theme.colors.onPrimary : theme.colors.textSecondary }}
+                >
+                  {choice.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      ) : (
+        <View style={styles.row} accessibilityRole="radiogroup" accessibilityLabel={label}>
+          {choices.map((choice) => {
+            const selected = choice.value === value;
+            return (
+              <Pressable
+                key={choice.value}
+                accessibilityRole="radio"
+                accessibilityLabel={choice.label}
+                accessibilityHint={choice.accessibilityHint}
+                accessibilityState={{ selected, checked: selected, disabled }}
+                disabled={disabled}
+                onPress={() => onChange(choice.value)}
+                hitSlop={4}
+                style={({ pressed }) => [
+                  styles.chip,
+                  {
+                    backgroundColor: selected
+                      ? theme.colors.primary
+                      : pressed
+                        ? theme.colors.surfaceMuted
+                        : theme.colors.surface,
+                    borderColor: selected ? theme.colors.primary : theme.colors.border,
+                    opacity: disabled ? 0.5 : 1,
+                  },
+                ]}
+              >
+                {choice.icon ? (
+                  <Icon
+                    name={choice.icon}
+                    size={18}
+                    tone={selected ? 'onPrimary' : 'textSecondary'}
+                  />
+                ) : null}
+                <Text
+                  variant="label"
+                  style={{ color: selected ? theme.colors.onPrimary : theme.colors.textSecondary }}
+                >
+                  {choice.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }
@@ -86,12 +142,14 @@ export function ChoiceChips<V extends string>({
 const useStyles = makeStyles((t) => ({
   container: { gap: t.spacing.xs },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm },
+  scrollRow: { flexDirection: 'row', gap: t.spacing.sm, paddingVertical: t.spacing.xs },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: t.spacing.xs,
-    minHeight: t.minTouchTarget,
-    paddingHorizontal: t.spacing.md,
+    // 40 pt chip + 4 pt hit slop above and below = 48 pt target.
+    minHeight: 40,
+    paddingHorizontal: t.spacing.lg,
     borderRadius: t.radius.pill,
     borderWidth: 1,
   },

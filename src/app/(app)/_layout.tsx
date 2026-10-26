@@ -3,35 +3,51 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Button, EmptyState, LoadingState, Screen, ToastHost } from '@/components/ui';
+import { GuestMergeScreen } from '@/features/auth/components/GuestMergeScreen';
 import { resolveAppGate } from '@/features/onboarding/model';
 import { useOnboardingStore } from '@/features/onboarding/store';
 import { usePreferences } from '@/features/settings/hooks/usePreferences';
 import { useRateRefresh } from '@/features/exchangeRates/useRateRefresh';
 import { useRecurringAutomation } from '@/features/reminders/useRecurringAutomation';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useSyncScheduler } from '@/hooks/useSyncScheduler';
 import { DataProvider, useData } from '@/providers/DataProvider';
 import { FormatProvider } from '@/providers/FormatProvider';
 import { useAuthStore } from '@/stores/authStore';
+import { useActiveProfile, useActiveUserId, useLocalModeStore } from '@/stores/localModeStore';
 import { useSyncStore } from '@/stores/syncStore';
 import { useTheme } from '@/theme';
 
 export const unstable_settings = { initialRouteName: '(tabs)' };
 
 /**
- * Signed-in shell. Mounts the user's local database (DataProvider), the
- * user's formatting (FormatProvider) and the sync scheduler; keyed by user
- * id so switching accounts fully resets state.
+ * App shell for the active profile — a signed-in account or local-only use.
+ * Mounts its local database (DataProvider), formatting (FormatProvider) and
+ * background work; keyed by id so switching profiles fully resets state.
+ * Right after a local-only user signs in, their device data is merged into
+ * the account first (GuestMergeScreen). Only accounts sync.
  */
 export default function AppLayout() {
-  const user = useAuthStore((s) => s.user);
+  const profile = useActiveProfile();
+  const guestId = useLocalModeStore((s) => s.guestId);
   const isSigningOut = useAuthStore((s) => s.isSigningOut);
-  if (!user) return null; // guarded by the root navigator; defensive only
+  if (!profile) return null; // guarded by the root navigator; defensive only
 
+  const merging = profile.mode === 'account' && guestId !== null;
   return (
-    <DataProvider key={user.id} userId={user.id}>
+    <DataProvider key={profile.userId} userId={profile.userId} mode={profile.mode}>
       <FormatProvider>
-        {isSigningOut ? <FullScreenLoading /> : <SyncScheduler />}
-        {isSigningOut ? null : <GatedStack />}
+        {isSigningOut ? (
+          <FullScreenLoading />
+        ) : merging ? (
+          <GuestMergeScreen guestId={guestId} />
+        ) : (
+          <>
+            {profile.mode === 'account' ? <SyncScheduler /> : <NetworkStatus />}
+            <BackgroundWork />
+            <GatedStack />
+          </>
+        )}
         <ToastHost />
       </FormatProvider>
     </DataProvider>
@@ -40,6 +56,16 @@ export default function AppLayout() {
 
 function SyncScheduler() {
   useSyncScheduler();
+  return null;
+}
+
+function NetworkStatus() {
+  useNetworkStatus();
+  return null;
+}
+
+/** Local work that runs with or without an account. */
+function BackgroundWork() {
   useRateRefresh();
   useRecurringAutomation();
   return null;
@@ -61,7 +87,7 @@ function GatedStack() {
   const preferences = usePreferences();
   const sync = useSyncStore();
   const authStatus = useAuthStore((s) => s.status);
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useActiveUserId();
 
   const gate = resolveAppGate({
     preferencesLoading: preferences.isLoading,
@@ -108,6 +134,11 @@ function GatedStack() {
         headerShadowVisible: false,
         headerStyle: { backgroundColor: theme.colors.background },
         headerTintColor: theme.colors.text,
+        headerTitleStyle: {
+          fontFamily: theme.typography.heading.fontFamily,
+          fontWeight: theme.typography.heading.fontWeight,
+          fontSize: 18,
+        },
         headerBackButtonDisplayMode: 'minimal',
         contentStyle: { backgroundColor: theme.colors.background },
         animation: theme.reduceMotion ? 'none' : 'default',
@@ -230,6 +261,7 @@ function GatedStack() {
         />
         <Stack.Screen name="reports/balances" options={{ title: t('reports.sections.balances') }} />
         <Stack.Screen name="reports/transactions" options={{ title: t('reports.lines.title') }} />
+        <Stack.Screen name="settings/index" options={{ title: t('more.title') }} />
         <Stack.Screen name="settings/regional" options={{ title: t('regional.title') }} />
         <Stack.Screen name="settings/privacy" options={{ title: t('privacy.title') }} />
         <Stack.Screen name="settings/about" options={{ title: t('about.title') }} />

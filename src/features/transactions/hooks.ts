@@ -6,6 +6,7 @@ import type { CurrencyCode } from '@/domain/currency/currencies';
 import type { CategoryKind } from '@/domain/enums';
 import { getBudgetPeriod } from '@/domain/finance/budget';
 import { normalizeMerchant } from '@/domain/merchants/normalize';
+import { dailySpending } from '@/domain/reports/aggregate';
 import { cashFlowInBase, topSpendingCategories } from '@/domain/transactions/insights';
 import { usePreferences } from '@/features/settings/hooks/usePreferences';
 import { useFormatter } from '@/i18n/FormatContext';
@@ -192,6 +193,7 @@ export function useHomeInsights() {
         period,
         flow,
         top,
+        daily: dailySpending(flowRows, period.start, period.end),
         fx,
         categoriesById: new Map(categories.map((c) => [c.id, c])),
         hasTransactions: flowRows.length > 0,

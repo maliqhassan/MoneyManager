@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next';
 import { Alert } from 'react-native';
 
-import { useSyncStore } from '@/stores/syncStore';
+import { selectSavedOffline, useSyncStore } from '@/stores/syncStore';
 import { showToast } from '@/stores/toastStore';
 
 /**
@@ -9,8 +9,8 @@ import { showToast } from '@/stores/toastStore';
  * when offline we say so instead of implying it reached the server.
  */
 export function toastSaved(t: TFunction, message: string): void {
-  const online = useSyncStore.getState().isOnline;
-  showToast(online ? message : `${message}. ${t('transactions.toast.savedOffline')}`);
+  const offline = selectSavedOffline(useSyncStore.getState());
+  showToast(!offline ? message : `${message}. ${t('transactions.toast.savedOffline')}`);
 }
 
 /** Native confirm dialog with a cancel button. */

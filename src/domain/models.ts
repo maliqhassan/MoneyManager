@@ -148,6 +148,8 @@ export interface Transaction extends SyncedEntity {
   transferId: Uuid | null;
   refundOfTransactionId: Uuid | null;
   recurringTransactionId: Uuid | null;
+  /** The occurrence a recurring rule posted this entry for (with recurringTransactionId). */
+  recurrenceDate: IsoDate | null;
   importBatchId: Uuid | null;
   /** Deterministic fingerprint used for import duplicate detection. */
   importHash: string | null;

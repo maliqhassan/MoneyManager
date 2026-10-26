@@ -28,6 +28,7 @@ import {
 } from '@/features/recurring/components/PlanningSections';
 import { useFormatter } from '@/i18n/FormatContext';
 import type { BillListItem, BudgetListItem, GoalFilter, GoalListItem } from '@/repositories/types';
+import { TabHeader } from '@/features/navigation/TabHeader';
 import { makeStyles } from '@/theme';
 
 type Section = 'budgets' | 'bills' | 'subscriptions' | 'goals' | 'upcoming' | 'recurring';
@@ -54,23 +55,27 @@ export default function PlanningScreen() {
     : 'budgets';
 
   return (
-    <Screen edges={[]}>
-      <View accessibilityLabel={t('planning.a11ySections')}>
-        <ChoiceChips
-          value={section}
-          onChange={(next) => router.setParams({ section: next })}
-          choices={SECTIONS.map((value) => ({ value, label: t(`planning.sections.${value}`) }))}
-        />
-      </View>
-      <View style={styles.content}>
-        {section === 'budgets' ? <BudgetsSection /> : null}
-        {section === 'bills' ? <BillsSection kind="bill" /> : null}
-        {section === 'subscriptions' ? <BillsSection kind="subscription" /> : null}
-        {section === 'goals' ? <GoalsSection /> : null}
-        {section === 'upcoming' ? <UpcomingSection /> : null}
-        {section === 'recurring' ? <RecurringSection /> : null}
-      </View>
-    </Screen>
+    <View style={styles.root}>
+      <TabHeader title={t('tabs.budgets')} />
+      <Screen edges={[]}>
+        <View accessibilityLabel={t('planning.a11ySections')}>
+          <ChoiceChips
+            layout="scroll"
+            value={section}
+            onChange={(next) => router.setParams({ section: next })}
+            choices={SECTIONS.map((value) => ({ value, label: t(`planning.sections.${value}`) }))}
+          />
+        </View>
+        <View style={styles.content}>
+          {section === 'budgets' ? <BudgetsSection /> : null}
+          {section === 'bills' ? <BillsSection kind="bill" /> : null}
+          {section === 'subscriptions' ? <BillsSection kind="subscription" /> : null}
+          {section === 'goals' ? <GoalsSection /> : null}
+          {section === 'upcoming' ? <UpcomingSection /> : null}
+          {section === 'recurring' ? <RecurringSection /> : null}
+        </View>
+      </Screen>
+    </View>
   );
 }
 
@@ -323,6 +328,7 @@ function GoalsSection() {
 }
 
 const useStyles = makeStyles((t) => ({
+  root: { flex: 1, backgroundColor: t.colors.background },
   content: { gap: t.spacing.lg },
   list: { gap: t.spacing.md },
   toolbar: {

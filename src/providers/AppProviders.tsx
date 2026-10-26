@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from 'expo-router';
+import { DefaultTheme, ThemeProvider as NavigationThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { type PropsWithChildren, useMemo, useState } from 'react';
 import { I18nextProvider } from 'react-i18next';
@@ -16,11 +16,11 @@ wireQueryManagers();
 function NavigationTheme({ children }: PropsWithChildren) {
   const theme = useTheme();
   const navTheme = useMemo(() => {
-    const base = theme.scheme === 'dark' ? DarkTheme : DefaultTheme;
     return {
-      ...base,
+      ...DefaultTheme,
+      dark: false,
       colors: {
-        ...base.colors,
+        ...DefaultTheme.colors,
         primary: theme.colors.primary,
         background: theme.colors.background,
         card: theme.colors.tabBar,
@@ -33,7 +33,7 @@ function NavigationTheme({ children }: PropsWithChildren) {
 
   return (
     <NavigationThemeProvider value={navTheme}>
-      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style="dark" />
       {children}
     </NavigationThemeProvider>
   );

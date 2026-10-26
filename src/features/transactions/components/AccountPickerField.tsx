@@ -17,6 +17,7 @@ export function AccountPickerField({
   onChange,
   error,
   excludeId,
+  variant = 'field',
 }: {
   label: string;
   accounts: readonly Account[];
@@ -24,6 +25,7 @@ export function AccountPickerField({
   onChange: (id: string) => void;
   error?: string | null;
   excludeId?: string;
+  variant?: 'field' | 'chip' | 'row';
 }) {
   const { t } = useTranslation();
   const options = useMemo(
@@ -50,6 +52,7 @@ export function AccountPickerField({
       searchable={accounts.length > 6}
       placeholder={t('transactions.errors.accountNotFound')}
       hint={error ?? undefined}
+      variant={variant}
     />
   );
 }

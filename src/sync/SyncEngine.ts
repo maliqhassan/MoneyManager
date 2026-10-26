@@ -86,6 +86,7 @@ export class SyncEngine {
   private running: Promise<SyncRunResult> | null = null;
   private columnCache = new Map<string, ReadonlySet<string>>();
   private listeners = new Set<(status: SyncStatusSnapshot) => void>();
+  private runListeners = new Set<(result: SyncRunResult) => void>();
   private status: SyncStatusSnapshot = {
     phase: 'idle',
     pendingCount: 0,
@@ -117,6 +118,15 @@ export class SyncEngine {
     return () => this.listeners.delete(listener);
   }
 
+  /**
+   * Called once per finished run with its result, whoever started it (the
+   * scheduler, pull-to-refresh or "Sync now"), so retry policy sees every outcome.
+   */
+  onRunFinished(listener: (result: SyncRunResult) => void): () => void {
+    this.runListeners.add(listener);
+    return () => this.runListeners.delete(listener);
+  }
+
   /** Marks the engine offline without attempting network calls. */
   setOffline(): void {
     this.updateStatus({ phase: 'offline' });
@@ -130,6 +140,16 @@ export class SyncEngine {
       });
     }
     return this.running;
+  }
+
+  /**
+   * Pulls only the given tables (no push), e.g. so a local-only profile can be
+   * merged against the account's own defaults. Errors are thrown, not recorded.
+   */
+  async pullOnly(tables: readonly SyncTableName[]): Promise<number> {
+    let applied = 0;
+    for (const table of tables) applied += await this.pullTable(table);
+    return applied;
   }
 
   /** Recomputes queue counters (e.g. after a local write). */
@@ -153,13 +173,15 @@ export class SyncEngine {
       failed: 0,
       errorCode: null,
     };
-    this.updateStatus({ phase: 'syncing', lastErrorCode: null });
+    // The previous error stays visible until this run settles, so an
+    // explanation (e.g. server update needed) does not flicker on each retry.
+    this.updateStatus({ phase: 'syncing' });
     try {
       await resetInFlight(this.db, this.nowIso());
       await requeueBlockedByServer(this.db, this.nowIso());
       await this.push(result);
       result.pulled = await this.pull();
-      this.updateStatus({ phase: 'idle', lastSyncedAt: this.nowIso() });
+      this.updateStatus({ phase: 'idle', lastSyncedAt: this.nowIso(), lastErrorCode: null });
     } catch (error) {
       const code = error instanceof HaltSyncError ? error.code : toAppError(error).code;
       result.errorCode = code;
@@ -171,6 +193,7 @@ export class SyncEngine {
     } finally {
       await this.refreshCounts().catch((e: unknown) => this.onError('Sync count failed', e));
     }
+    for (const listener of this.runListeners) listener(result);
     return result;
   }
 

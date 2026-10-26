@@ -42,6 +42,7 @@ const useStyles = makeStyles((t) => ({
   card: {
     backgroundColor: t.colors.surface,
     borderRadius: t.radius.lg,
+    borderCurve: 'continuous',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: t.colors.border,
     ...t.elevation.low,

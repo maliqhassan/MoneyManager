@@ -110,6 +110,7 @@ export interface TransactionRow extends SyncedRow {
   transfer_id: string | null;
   refund_of_transaction_id: string | null;
   recurring_transaction_id: string | null;
+  recurrence_date: string | null;
   import_batch_id: string | null;
   import_hash: string | null;
   merchant_key: string | null;
@@ -141,6 +142,7 @@ export function toTransaction(r: TransactionRow): Transaction {
     transferId: r.transfer_id,
     refundOfTransactionId: r.refund_of_transaction_id,
     recurringTransactionId: r.recurring_transaction_id,
+    recurrenceDate: r.recurrence_date ?? null,
     importBatchId: r.import_batch_id,
     importHash: r.import_hash,
     merchantKey: r.merchant_key,

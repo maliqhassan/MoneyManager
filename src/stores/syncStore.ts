@@ -12,8 +12,11 @@ interface SyncState extends SyncStatusSnapshot {
    * unmount) every time a sync starts.
    */
   hasSettled: boolean;
+  /** No account: nothing syncs, so 'will sync later' messages do not apply. */
+  localOnly: boolean;
   apply: (snapshot: SyncStatusSnapshot) => void;
   setOnline: (online: boolean) => void;
+  setLocalOnly: (localOnly: boolean) => void;
   reset: () => void;
 }
 
@@ -40,8 +43,14 @@ export const useSyncStore = create<SyncState>()((set) => ({
   ...INITIAL,
   isOnline: true,
   hasSettled: false,
+  localOnly: false,
   apply: (snapshot) =>
     set((state) => ({ ...snapshot, hasSettled: state.hasSettled || runHasSettled(snapshot) })),
   setOnline: (isOnline) => set({ isOnline }),
+  setLocalOnly: (localOnly) => set({ localOnly }),
   reset: () => set({ ...INITIAL, hasSettled: false }),
 }));
+
+/** A write was saved but cannot reach the server yet (offline, with an account). */
+export const selectSavedOffline = (s: { isOnline: boolean; localOnly: boolean }) =>
+  !s.isOnline && !s.localOnly;

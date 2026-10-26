@@ -6,6 +6,7 @@ import { logger } from '@/services/monitoring/logger';
 import { useData } from '@/providers/DataProvider';
 import { useOnboardingStore } from '@/features/onboarding/store';
 import { useAuthStore } from '@/stores/authStore';
+import { useLocalModeStore } from '@/stores/localModeStore';
 
 import { deleteAccountRemote, signOut } from '../services/authService';
 
@@ -33,7 +34,7 @@ export function useSignOut() {
         await beforeWipe?.();
         await destroyLocalData();
         // Per-user onboarding draft goes with the user's data; device-level
-        // settings (theme) are kept.
+        // settings (reminders) are kept.
         const userId = store.user?.id;
         if (userId) useOnboardingStore.getState().clear(userId);
         await signOut();
@@ -81,5 +82,28 @@ export function useSignOut() {
     [perform],
   );
 
-  return { requestSignOut, requestDeleteAccount, busy };
+  /**
+   * Local-only use: deletes this device's database and returns to the welcome
+   * screen. There is no copy anywhere else, so the caller confirms first.
+   */
+  const eraseLocalData = useCallback(async () => {
+    const guestId = useLocalModeStore.getState().guestId;
+    if (!guestId) return;
+    setBusy(true);
+    const store = useAuthStore.getState();
+    store.setSigningOut(true);
+    try {
+      await destroyLocalData();
+      useOnboardingStore.getState().clear(guestId);
+      useLocalModeStore.getState().clearGuest();
+    } catch (error) {
+      logger.error('Erasing local data failed', error);
+      throw error;
+    } finally {
+      store.setSigningOut(false);
+      setBusy(false);
+    }
+  }, [destroyLocalData]);
+
+  return { requestSignOut, requestDeleteAccount, eraseLocalData, busy };
 }

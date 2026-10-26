@@ -101,46 +101,44 @@ export default function EditTransactionScreen() {
   }
 
   return (
-    <Screen keyboard>
-      <TransactionForm
-        initialValues={values}
-        accounts={accounts.data ?? []}
-        submitLabel={t('common.saveChanges')}
-        receipts={detail.attachments.map((a) => ({
-          id: a.id,
-          localUri: a.localUri,
-          storagePath: a.storagePath,
-          mimeType: a.mimeType,
-          fileName: a.fileName,
-          uploadStatus: a.uploadStatus,
-        }))}
-        onAddReceipt={async (file) => {
-          await mutations.addReceipt.mutateAsync({ transactionId: id, file });
-        }}
-        onRemoveReceipt={(item) =>
-          Alert.alert(t('transactions.fields.removeReceipt'), item.fileName, [
-            { text: t('common.cancel'), style: 'cancel' },
-            {
-              text: t('common.delete'),
-              style: 'destructive',
-              onPress: () => item.id && mutations.removeReceipt.mutate(item.id),
-            },
-          ])
+    <TransactionForm
+      initialValues={values}
+      accounts={accounts.data ?? []}
+      submitLabel={t('common.saveChanges')}
+      receipts={detail.attachments.map((a) => ({
+        id: a.id,
+        localUri: a.localUri,
+        storagePath: a.storagePath,
+        mimeType: a.mimeType,
+        fileName: a.fileName,
+        uploadStatus: a.uploadStatus,
+      }))}
+      onAddReceipt={async (file) => {
+        await mutations.addReceipt.mutateAsync({ transactionId: id, file });
+      }}
+      onRemoveReceipt={(item) =>
+        Alert.alert(t('transactions.fields.removeReceipt'), item.fileName, [
+          { text: t('common.cancel'), style: 'cancel' },
+          {
+            text: t('common.delete'),
+            style: 'destructive',
+            onPress: () => item.id && mutations.removeReceipt.mutate(item.id),
+          },
+        ])
+      }
+      onSubmit={async (v) => {
+        const currency = (accounts.data ?? []).find((a) => a.id === v.accountId)?.currency;
+        if (!currency) return;
+        await mutations.update.mutateAsync({
+          id,
+          input: toTransactionInput(v, currency, decimal, tz),
+        });
+        const merchantKey = normalizeMerchant(v.payee);
+        if (v.rememberCategory && merchantKey && v.categoryId) {
+          await mutations.rememberCategory.mutateAsync({ merchantKey, categoryId: v.categoryId });
         }
-        onSubmit={async (v) => {
-          const currency = (accounts.data ?? []).find((a) => a.id === v.accountId)?.currency;
-          if (!currency) return;
-          await mutations.update.mutateAsync({
-            id,
-            input: toTransactionInput(v, currency, decimal, tz),
-          });
-          const merchantKey = normalizeMerchant(v.payee);
-          if (v.rememberCategory && merchantKey && v.categoryId) {
-            await mutations.rememberCategory.mutateAsync({ merchantKey, categoryId: v.categoryId });
-          }
-          saved();
-        }}
-      />
-    </Screen>
+        saved();
+      }}
+    />
   );
 }

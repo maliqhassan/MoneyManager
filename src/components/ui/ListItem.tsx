@@ -40,11 +40,11 @@ export function ListItem({
     <>
       {icon ? (
         <View style={styles.iconWrap}>
-          <Icon name={icon} size={20} tone={destructive ? 'negative' : 'textSecondary'} />
+          <Icon name={icon} size={20} tone={destructive ? 'negative' : 'primary'} />
         </View>
       ) : null}
       <View style={styles.body}>
-        <Text variant="body" tone={destructive ? 'negative' : 'text'} numberOfLines={1}>
+        <Text variant="bodyStrong" tone={destructive ? 'negative' : 'text'} numberOfLines={1}>
           {title}
         </Text>
         {subtitle ? (
@@ -87,15 +87,16 @@ const useStyles = makeStyles((t) => ({
     flexDirection: 'row',
     alignItems: 'center',
     gap: t.spacing.md,
-    minHeight: 56,
+    minHeight: 64,
     paddingVertical: t.spacing.sm,
     paddingHorizontal: t.spacing.lg,
   },
   iconWrap: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: t.radius.md,
-    backgroundColor: t.colors.surfaceMuted,
+    borderCurve: 'continuous',
+    backgroundColor: t.colors.primaryMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -101,6 +101,27 @@ export async function restoreSession(): Promise<void> {
   }
 }
 
+/**
+ * Refreshes the access token after the server rejected it (HTTP 401) during
+ * sync. Returns true when a fresh session is in place. When the refresh token
+ * itself is no longer valid Supabase ends the session (SIGNED_OUT) and the
+ * user signs in again; this device's database, including unsynced changes,
+ * is kept and syncs after they sign back in.
+ */
+export async function refreshAuthSession(): Promise<boolean> {
+  try {
+    const { data, error } = await getSupabase().auth.refreshSession();
+    if (error || !data.session) {
+      logger.warn('Session refresh failed', { code: toAppError(error).code });
+      return false;
+    }
+    return true;
+  } catch (error) {
+    logger.warn('Session refresh failed', { code: toAppError(error).code });
+    return false;
+  }
+}
+
 /** Reads the user id/email from the persisted session without validating tokens. */
 async function readPersistedUser(): Promise<AuthUser | null> {
   try {

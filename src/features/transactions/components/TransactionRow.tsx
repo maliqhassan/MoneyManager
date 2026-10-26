@@ -16,9 +16,12 @@ import { makeStyles, useTheme } from '@/theme';
 export const TransactionRow = memo(function TransactionRow({
   item,
   onPress,
+  variant = 'plain',
 }: {
   item: TransactionListItem;
   onPress: (item: TransactionListItem) => void;
+  /** 'card': a separate rounded card (Activity list); 'plain': a row inside a card. */
+  variant?: 'plain' | 'card';
 }) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -68,6 +71,7 @@ export const TransactionRow = memo(function TransactionRow({
       onPress={() => onPress(item)}
       style={({ pressed }) => [
         styles.row,
+        variant === 'card' && styles.card,
         pressed && { backgroundColor: theme.colors.surfaceMuted },
       ]}
     >
@@ -79,18 +83,25 @@ export const TransactionRow = memo(function TransactionRow({
         <CategoryIcon
           icon={item.isSplit ? 'git-branch-outline' : item.categoryIcon}
           color={item.categoryColor}
+          size={40}
+          shape="rounded"
         />
       )}
       <View style={styles.body}>
-        <Text variant="bodyStrong" numberOfLines={1}>
-          {title}
-        </Text>
+        <View style={styles.titleRow}>
+          <Text variant="bodyStrong" numberOfLines={1} style={styles.metaText}>
+            {title}
+          </Text>
+          {item.isRecurring ? (
+            <Badge label={t('transactions.repeats')} tone="primary" icon="repeat" caps />
+          ) : null}
+        </View>
         <View style={styles.meta}>
           <Text variant="bodySmall" tone="textSecondary" numberOfLines={1} style={styles.metaText}>
             {subtitle}
           </Text>
           {item.type === 'refund' ? (
-            <Badge label={t('transactions.types.refund')} tone="positive" />
+            <Badge label={t('transactions.types.refund')} tone="positive" caps />
           ) : null}
           {item.hasReceipt ? <Icon name="attach" size={16} tone="textMuted" /> : null}
         </View>
@@ -116,14 +127,25 @@ const useStyles = makeStyles((t) => ({
     paddingHorizontal: t.spacing.lg,
   },
   transferIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderCurve: 'continuous',
     backgroundColor: t.colors.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  card: {
+    marginHorizontal: t.spacing.gutter,
+    marginBottom: t.spacing.sm,
+    borderRadius: t.radius.lg,
+    backgroundColor: t.colors.surface,
+    borderWidth: 1,
+    borderColor: t.colors.border,
+    paddingHorizontal: t.spacing.md,
+  },
   body: { flex: 1, gap: t.spacing.xxs },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm },
   meta: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm },
   metaText: { flexShrink: 1 },
 }));

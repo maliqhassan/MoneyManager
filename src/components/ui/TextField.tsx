@@ -4,6 +4,7 @@ import { TextInput, type TextInputProps, View } from 'react-native';
 import { makeStyles, useTheme } from '@/theme';
 
 import { IconButton } from './IconButton';
+import { useKeyboardAware } from './Screen';
 import { Text } from './Text';
 
 export interface TextFieldProps extends Omit<TextInputProps, 'style'> {
@@ -48,6 +49,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
 ) {
   const theme = useTheme();
   const styles = useStyles();
+  const keyboardAware = useKeyboardAware();
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const hasError = Boolean(error);
@@ -89,6 +91,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
           style={[styles.input, { color: theme.colors.text }]}
           onFocus={(e) => {
             setFocused(true);
+            keyboardAware?.revealFocusedInput();
             onFocus?.(e);
           }}
           onBlur={(e) => {
@@ -131,6 +134,7 @@ const useStyles = makeStyles((t) => ({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: t.radius.md,
+    borderCurve: 'continuous',
     minHeight: 52,
     gap: t.spacing.xs,
     paddingStart: t.spacing.md,

@@ -6,7 +6,7 @@ import { useOnboardingStore } from '@/features/onboarding/store';
 import { FormatContext } from '@/i18n/FormatContext';
 import { createFormatter } from '@/i18n/formatter';
 import { deviceFormatSettings } from '@/i18n/locale';
-import { useAuthStore } from '@/stores/authStore';
+import { useActiveUserId, useLocalModeStore } from '@/stores/localModeStore';
 import { useTheme } from '@/theme';
 
 /**
@@ -16,13 +16,18 @@ import { useTheme } from '@/theme';
  */
 export default function OnboardingLayout() {
   const theme = useTheme();
-  const userId = useAuthStore((s) => s.user?.id ?? '');
+  const userId = useActiveUserId();
+  const introSeen = useLocalModeStore((s) => s.introSeen);
   const progress = useOnboardingStore((s) => s.byUser[userId]);
   const ensure = useOnboardingStore((s) => s.ensure);
 
   useEffect(() => {
-    if (userId) ensure(userId, suggestDraft(deviceFormatSettings()));
-  }, [ensure, userId]);
+    if (!userId) return;
+    const fresh = !useOnboardingStore.getState().byUser[userId];
+    ensure(userId, suggestDraft(deviceFormatSettings()));
+    // The intro slides already welcomed this user: start at the first choice.
+    if (fresh && introSeen) useOnboardingStore.getState().setStep(userId, 'currency');
+  }, [ensure, userId, introSeen]);
 
   const formatter = useMemo(
     () => (progress ? createFormatter(draftFormatSettings(progress.draft)) : null),

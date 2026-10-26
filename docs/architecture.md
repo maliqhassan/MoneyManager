@@ -125,9 +125,13 @@ and forwards warnings/errors to a pluggable `ErrorReporter`. Sentry plugs in via
 
 ## Signed-in gate & onboarding (Phase 1)
 
-`src/app/(app)/_layout.tsx` mounts `DataProvider` → `FormatProvider` → sync
-scheduler, then decides with the pure `resolveAppGate`
-(`features/onboarding/model.ts`):
+`src/app/(app)/_layout.tsx` opens the **active profile**: the signed-in
+account, or local-only use with no account (`stores/localModeStore.ts`; see
+docs/authentication.md). It mounts `DataProvider` → `FormatProvider`, the sync
+scheduler (accounts only) and local background work, then decides with the
+pure `resolveAppGate` (`features/onboarding/model.ts`). A local-only profile
+always has its preferences row (it is created locally), so it never waits for
+a sync. After the intro slides, onboarding starts at the currency step.
 
 | Preferences row | Online / first sync | Result |
 | --- | --- | --- |
